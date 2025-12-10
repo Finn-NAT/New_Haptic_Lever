@@ -1,0 +1,7 @@
+**/build
+**/.vscode
+
+components/*
+!components/README.md 
+
+/managed_components
