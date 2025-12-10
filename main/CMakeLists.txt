@@ -1,3 +1,5 @@
-idf_component_register(SRCS "app_main.cpp" "Motor_Haptic.cpp"
+file(GLOB CPP_SOURCES "*.cpp")
+
+idf_component_register(SRCS ${CPP_SOURCES}
                     INCLUDE_DIRS "."
                     REQUIRES arduino Simple_FOC)

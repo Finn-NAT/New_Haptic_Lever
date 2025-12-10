@@ -32,30 +32,13 @@ extern "C" void app_main() {
   
     initArduino();
     motorHaptic.init();
-    motorHaptic.calibrate();
 
-    // int64_t lastTime = esp_timer_get_time();
-    // uint64_t total_loops = 0;
-    // int counter = 0;
-
-    motorHaptic.setup();
     while (1) {
-        motorHaptic.loop(); 
-
-
-        // total_loops++;
-        // if (++counter >= 10000) {
-        //     int64_t now = esp_timer_get_time();
-        //     int64_t elapsed = now - lastTime;
-        //     float loopHz = 10000.0 * 1000000.0 / elapsed;
-            
-        //     printf("Loop frequency: %.2f Hz (%.2f MHz) | Total: %llu loops\n", 
-        //            loopHz, loopHz/1000000.0, total_loops);
-            
-        //     lastTime = now;
-        //     counter = 0;
-        // }
-        // vTaskDelay(100);
+        motorHaptic.calibrate();
+        motorHaptic.setup();
+        while(1) {
+            motorHaptic.loop(); 
+        }
     }
 }
 

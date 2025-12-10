@@ -41,7 +41,7 @@
 #define CALIB_PD_I_VALUE 0.1f
 #define CALIB_TORQUE_VALUE 5.5f
 
-#define HAPTIC_OUT_ANGLE_DEFAULT (1.8f * PI / 180.0)
+#define HAPTIC_OUT_ANGLE_DEFAULT (2.0f * PI / 180.0)
 #define HAPTIC_IN_ANGLE_DEFAULT  (0.25f * PI / 180.0)
 /* ----------------------------------------------------- */
 
@@ -53,35 +53,60 @@ typedef struct motor_info {
     float zero_electric_angle;
 } motor_info_t;
 
+// Loop mode enumeration
+enum LoopMode {
+    FUNCTION_MODE_1 = 1,  // Haptic with 12 detents
+    FUNCTION_MODE_2 = 2,  // Boundaries Haptic
+    FUNCTION_MODE_3 = 3,  // Haptic with 6 detents + boundaries
+    FUNCTION_MODE_4 = 4,  // Haptic with 12 detents + boundaries + vibration
+    FUNCTION_MODE_DEFAULT = 0  // Basic haptic mode
+};
+
 class MotorHaptic {
 public:
     // Constructor & Destructor
-    MotorHaptic(motor_info_t motor_info, int cs_pin);
+    MotorHaptic(motor_info_t motor_info, uint8_t cs_pin);
     ~MotorHaptic();
 
     // Initialization and main loop
     void init();
+    void calibrate();
     void setup();
     void loop();
-    void calibrate();
+
+    // Loop mode control
+    void setLoopMode(LoopMode mode);
+    LoopMode getLoopMode() const { return current_function_mode; }
+
+    // Setup functions for each mode
+    void setupF0();
+    void setupF1();
+
+    // Different loop implementations
+    void loopF0();  // Basic haptic mode
+    void loopF1();  // Haptic with 12 detents
 
     // Motor control methods
     float setTorquePercent(float percent);
     float setTorqueValue(float value);
 
 private:
-
     // Motor components
     BLDCMotor motor;
     BLDCDriver3PWM driver;
     MagneticSensorSPI sensor;
 
     motor_info_t motor_info;
-    int cs_pin;
+    uint8_t cs_pin;
 
     float home_angle = 0;
     float max_position = 0;
     float min_position = 0;
+
+    LoopMode current_function_mode = FUNCTION_MODE_DEFAULT;
+    void (MotorHaptic::*loop_function_ptr)() = &MotorHaptic::loopF0;
+    void (MotorHaptic::*setup_function_ptr)() = &MotorHaptic::setupF0;
+
 };
 
 #endif 
