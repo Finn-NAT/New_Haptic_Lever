@@ -14,7 +14,6 @@
 #include "esp_task_wdt.h"
 
 /* USER DEFINE LINE ------------------------------------ */
-
 #define PIN_SPI_SCK   18
 #define PIN_SPI_MISO  19
 #define PIN_SPI_MOSI  23
@@ -43,7 +42,22 @@
 
 #define HAPTIC_OUT_ANGLE_DEFAULT (2.0f * PI / 180.0)
 #define HAPTIC_IN_ANGLE_DEFAULT  (0.25f * PI / 180.0)
+
 /* ----------------------------------------------------- */
+
+#define SUB_FOC_PID_P        200
+#define SUB_ANGLE_STEP       (1.0f * PI / 180.0f)
+#define SUB_FORCE            5.0f  
+
+#define MAIN_ANGLE_STEP      HAPTIC_OUT_ANGLE_DEFAULT
+#define MAIN_FORCE           19.0f
+
+#define OUT_PID_P_VALUE 400.0f
+#define OUT_PID_D_VALUE 0.01f
+#define OUT_PID_I_VALUE 0.001f
+#define OUT_FORCE 7.0f 
+
+/* USER DEFINE LINE END -------------------------------- */
 
 typedef struct motor_info {
     int phA;

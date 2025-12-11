@@ -4,14 +4,12 @@
    LOOP MODE 0 - Basic haptic mode
    ============================================================================ */
 
-#define F0_MAIN_ANGLE_STEP     HAPTIC_OUT_ANGLE_DEFAULT
-#define F0_MAIN_FORCE          19.0f
 
-// Static variables for loopF0
+// Static variables for Function0
 namespace FunctionF0 {
     bool one_time = false;
     bool one_time_main = false;
-    float angle_dead_zone = F0_MAIN_ANGLE_STEP;
+    float angle_dead_zone = MAIN_ANGLE_STEP;
 }
 
 void MotorHaptic::setupF0() {
@@ -32,19 +30,19 @@ void MotorHaptic::loopF0() {
     float error = home_angle - motor.shaft_angle;
     
     if (fabs(error) < angle_dead_zone) {
-        angle_dead_zone = F0_MAIN_ANGLE_STEP;
+        angle_dead_zone = MAIN_ANGLE_STEP;
         if(one_time) {
             if(error > 0) {
-                motor.move(F0_MAIN_FORCE);
+                motor.move(MAIN_FORCE);
                 motor.loopFOC();
                 delayMicroseconds(5);
-                motor.move(F0_MAIN_FORCE);
+                motor.move(MAIN_FORCE);
                 motor.loopFOC();
             } else {
-                motor.move(-F0_MAIN_FORCE);
+                motor.move(-MAIN_FORCE);
                 motor.loopFOC();
                 delayMicroseconds(5);
-                motor.move(-F0_MAIN_FORCE);
+                motor.move(-MAIN_FORCE);
                 motor.loopFOC();
             }
             motor.P_angle.P = FOC_PID_P_DEFAULT;
@@ -59,16 +57,16 @@ void MotorHaptic::loopF0() {
     else {
         if(one_time_main) {
             if(error > 0) {
-                motor.move(F0_MAIN_FORCE);
+                motor.move(MAIN_FORCE);
                 motor.loopFOC();
                 delayMicroseconds(5);
-                motor.move(F0_MAIN_FORCE);
+                motor.move(MAIN_FORCE);
                 motor.loopFOC();
             } else {
-                motor.move(-F0_MAIN_FORCE);
+                motor.move(-MAIN_FORCE);
                 motor.loopFOC();
                 delayMicroseconds(5);
-                motor.move(-F0_MAIN_FORCE);
+                motor.move(-MAIN_FORCE);
                 motor.loopFOC();
             }
             one_time_main = false;
