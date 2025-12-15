@@ -87,6 +87,7 @@ public:
     void calibrate();
     void setup();
     void loop();
+    float getPosition();
 
     // Loop mode control
     void setLoopMode(LoopMode mode);
@@ -95,10 +96,16 @@ public:
     // Setup functions for each mode
     void setupF0();
     void setupF1();
+    void setupF2();
+    void setupF3();
+    void setupF4();
 
     // Different loop implementations
     void loopF0();  // Basic haptic mode
     void loopF1();  // Haptic with 12 detents
+    void loopF2();  // Boundaries Haptic
+    void loopF3();  // Haptic with 6 detents + boundaries
+    void loopF4();  // Haptic with 12 detents + boundaries + vibration
 
     // Motor control methods
     float setTorquePercent(float percent);
@@ -118,8 +125,8 @@ private:
     float min_position = 0;
 
     LoopMode current_function_mode = FUNCTION_MODE_DEFAULT;
-    void (MotorHaptic::*loop_function_ptr)() = &MotorHaptic::loopF0;
-    void (MotorHaptic::*setup_function_ptr)() = &MotorHaptic::setupF0;
+    void (MotorHaptic::*loop_function_ptr)() = &MotorHaptic::loopF2;
+    void (MotorHaptic::*setup_function_ptr)() = &MotorHaptic::setupF2;
 
 };
 

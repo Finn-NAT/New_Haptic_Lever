@@ -13,7 +13,7 @@ void MotorHaptic::setupF2() {
     motor.P_angle.P = OUT_PID_P_VALUE;
     motor.P_angle.D = OUT_PID_D_VALUE;
     motor.P_angle.I = OUT_PID_I_VALUE;
-    motor.controller = MotionControlType::angle;
+    motor.controller = MotionControlType::torque;
 }
 
 void MotorHaptic::loopF2() {

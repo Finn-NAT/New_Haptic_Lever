@@ -45,70 +45,75 @@ void MotorHaptic::init() {
 
 // Calibration routine
 void MotorHaptic::calibrate() {
-    motor.controller = MotionControlType::torque;
+  motor.loopFOC();
+  home_angle = motor.shaft_angle;
+  max_position = home_angle + (60.0f * DEG_TO_RAD);
+  min_position = home_angle - (60.0f * DEG_TO_RAD);
 
-	motor.loopFOC();
-	float old_angle = motor.shaft_angle;
-	int count = 0;
-	while(1){
-	  for(int i = 0 ; i < 40; i++){
-		motor.loopFOC();
-		motor.move(CALIB_TORQUE_VALUE);
-		delay(1);
-	  }
-	  if(fabs(motor.shaft_angle - old_angle) < 0.5*DEG_TO_RAD){
-		count++;
-		if(count > 20){
-		  max_position = motor.shaft_angle;
-		  break;
-		}
+  // motor.controller = MotionControlType::torque;
+
+	// motor.loopFOC();
+	// float old_angle = motor.shaft_angle;
+	// int count = 0;
+	// while(1){
+	//   for(int i = 0 ; i < 40; i++){
+	// 	motor.loopFOC();
+	// 	motor.move(CALIB_TORQUE_VALUE);
+	// 	delay(1);
+	//   }
+	//   if(fabs(motor.shaft_angle - old_angle) < 0.5*DEG_TO_RAD){
+	// 	count++;
+	// 	if(count > 20){
+	// 	  max_position = motor.shaft_angle;
+	// 	  break;
+	// 	}
   
-	  }
-	  old_angle = motor.shaft_angle; 
-	}
+	//   }
+	//   old_angle = motor.shaft_angle; 
+	// }
 
-	count = 0;
-	while(1){
-	  for(int i = 0 ; i < 40; i++){
-		motor.loopFOC();
-		motor.move(-CALIB_TORQUE_VALUE);
-		delay(1);
-	  }
-	  if(fabs(motor.shaft_angle - old_angle) < 0.5*DEG_TO_RAD){
-		count++;
-		if(count > 20){
-		  min_position = motor.shaft_angle;
-		  break;
-		}
-	  }
-	  old_angle = motor.shaft_angle; 
-	}
-	home_angle = (max_position + min_position)/2;
+	// count = 0;
+	// while(1){
+	//   for(int i = 0 ; i < 40; i++){
+	// 	motor.loopFOC();
+	// 	motor.move(-CALIB_TORQUE_VALUE);
+	// 	delay(1);
+	//   }
+	//   if(fabs(motor.shaft_angle - old_angle) < 0.5*DEG_TO_RAD){
+	// 	count++;
+	// 	if(count > 20){
+	// 	  min_position = motor.shaft_angle;
+	// 	  break;
+	// 	}
+	//   }
+	//   old_angle = motor.shaft_angle; 
+	// }
+	// home_angle = (max_position + min_position)/2;
 
-    motor.P_angle.P = CALIB_PD_P_VALUE;
-    motor.P_angle.D = CALIB_PD_D_VALUE;
-    motor.P_angle.I = CALIB_PD_I_VALUE;
+  //   motor.P_angle.P = CALIB_PD_P_VALUE;
+  //   motor.P_angle.D = CALIB_PD_D_VALUE;
+  //   motor.P_angle.I = CALIB_PD_I_VALUE;
 
-    motor.P_angle.reset();
-    motor.PID_velocity.reset();
+  //   motor.P_angle.reset();
+  //   motor.PID_velocity.reset();
 
-	count = 0;
-	while(1){
-	    motor.loopFOC();
-	    float error =  motor.shaft_angle - home_angle;
-	    float shaft_velocity_sp = motor.P_angle(home_angle - motor.shaft_angle );
-        shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
-        float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
-        current_sp = _constrain(current_sp,-CALIB_TORQUE_VALUE,CALIB_TORQUE_VALUE);
-        motor.move(current_sp);
-	    if(fabs(error*RAD_TO_DEG) < 0.25){count++;}
-	    if(count > 50) {
-            motor.P_angle.reset();
-            motor.PID_velocity.reset();
-            break;
-        }
-	    delay(1);
-	}  
+	// count = 0;
+	// while(1){
+	//     motor.loopFOC();
+	//     float error =  motor.shaft_angle - home_angle;
+	//     float shaft_velocity_sp = motor.P_angle(home_angle - motor.shaft_angle );
+  //       shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
+  //       float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
+  //       current_sp = _constrain(current_sp,-CALIB_TORQUE_VALUE,CALIB_TORQUE_VALUE);
+  //       motor.move(current_sp);
+	//     if(fabs(error*RAD_TO_DEG) < 0.25){count++;}
+	//     if(count > 50) {
+  //           motor.P_angle.reset();
+  //           motor.PID_velocity.reset();
+  //           break;
+  //       }
+	//     delay(1);
+	// }  
 
 
 }
@@ -121,6 +126,10 @@ void MotorHaptic::setup(){
 void MotorHaptic::loop() {
     // Main loop - calls the appropriate loop function based on mode
     (this->*loop_function_ptr)();
+}
+
+float MotorHaptic::getPosition() {
+    return (motor.shaft_angle - home_angle);
 }
 
 // Set loop mode and switch to appropriate loop function
@@ -138,7 +147,7 @@ void MotorHaptic::setLoopMode(LoopMode mode) {
             break;
         default:
             loop_function_ptr = &MotorHaptic::loopF0;
-            setup_function_ptr = &MotorHaptic::setupF1;
+            setup_function_ptr = &MotorHaptic::setupF0;
             break;
     }
     
