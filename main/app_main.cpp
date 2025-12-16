@@ -62,8 +62,13 @@ static const twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPI
 
 static QueueHandle_t rx_task_queue;
 static SemaphoreHandle_t rx_sem;
+static SemaphoreHandle_t tx_sem;
+
 static bool function_5_enabled = false;
 static float position_value = 0.0f;
+
+static bool change_mode_requested = false;
+static LoopMode current_mode = FUNCTION_MODE_DEFAULT;
 
 /* --------------------------- Tasks and Functions -------------------------- */
 
@@ -107,7 +112,9 @@ static void twai_transmit_task(void *arg)
         float_to_bytes(position_value, &tx_msg.data[0]);
         ESP_ERROR_CHECK(twai_transmit(&tx_msg, portMAX_DELAY));
         xSemaphoreGive(rx_sem);
+
         //ESP_LOGI(EXAMPLE_TAG, "twai_transmit_task running on core %d", xPortGetCoreID());
+
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
@@ -128,6 +135,14 @@ static void twai_receive_task(void *arg)
             // rx_func = (rx_task_function_t)rx_message.data[0];
             // xQueueSend(rx_task_queue, &rx_func, portMAX_DELAY);
 
+            xSemaphoreTake(tx_sem, portMAX_DELAY);
+            if(current_mode != static_cast<LoopMode>(rx_message.data[0])){
+                change_mode_requested = true;
+                current_mode = static_cast<LoopMode>(rx_message.data[0]);
+                printf("Requested mode change to %d\n", current_mode);
+            }
+            xSemaphoreGive(tx_sem);
+
             xSemaphoreTake(rx_sem, portMAX_DELAY);
             tx_message = rx_message;
             tx_message.data[0] = 0xFF;
@@ -135,7 +150,6 @@ static void twai_receive_task(void *arg)
             xSemaphoreGive(rx_sem);
         }else if(rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == UPDATED_LEVER_ID && function_5_enabled){   
             printf("Processing received message for position update...\n");
-            
         }
     }
 }
@@ -143,8 +157,12 @@ static void twai_receive_task(void *arg)
 extern "C" void app_main() {
 
     rx_sem = xSemaphoreCreateBinary();
-    rx_task_queue = xQueueCreate(1, sizeof(rx_task_function_t));
     xSemaphoreGive(rx_sem);
+
+    tx_sem = xSemaphoreCreateBinary();
+    xSemaphoreGive(tx_sem);
+
+    rx_task_queue = xQueueCreate(1, sizeof(rx_task_function_t));
 
     //Install TWAI driver
     ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
@@ -173,6 +191,9 @@ extern "C" void app_main() {
     motorHaptic.init();
 
     while (1) {
+        motorHaptic.setLoopMode(current_mode);
+        printf("Set loop mode to %d\n", current_mode);
+
         motorHaptic.calibrate();
         motorHaptic.setup();
         while(1) {
@@ -181,6 +202,14 @@ extern "C" void app_main() {
             xSemaphoreTake(rx_sem, portMAX_DELAY); 
             position_value = motorHaptic.getPosition();
             xSemaphoreGive(rx_sem);
+
+            xSemaphoreTake(tx_sem, portMAX_DELAY);
+            if(change_mode_requested){
+                change_mode_requested = false;
+                xSemaphoreGive(tx_sem);
+                break;
+            }
+            xSemaphoreGive(tx_sem);
         }
     }
 }

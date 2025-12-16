@@ -6,8 +6,8 @@
 
 #define F4_MAX_HAPTICS          12
 
-#define DELTA_MAX_MIN_ZONE 3.5f * PI / 180.0f
-#define MAX_MIN_FORCE 3.5f
+#define DELTA_MAX_MIN_ZONE 1.5f * PI / 180.0f
+#define MAX_MIN_FORCE 4.5f
 
 // Static variables for Function4
 namespace FunctionF4 {
@@ -62,22 +62,22 @@ void MotorHaptic::loopF4() {
     if (fabs(error) < angle_dead_zone) {
         angle_dead_zone  = MAIN_ANGLE_STEP;
         if(one_time){
-            if(error > 0)
-            {
-                motor.move(MAIN_FORCE);
-                motor.loopFOC();
-                delayMicroseconds(5);
-                motor.move(MAIN_FORCE);
-                motor.loopFOC();
-            }
-            else
-            {
-                motor.move(-MAIN_FORCE);
-                motor.loopFOC();
-                delayMicroseconds(5);
-                motor.move(-MAIN_FORCE);
-                motor.loopFOC();
-            }
+            // if(error > 0)
+            // {
+            //     motor.move(MAIN_FORCE);
+            //     motor.loopFOC();
+            //     delayMicroseconds(5);
+            //     motor.move(MAIN_FORCE);
+            //     motor.loopFOC();
+            // }
+            // else
+            // {
+            //     motor.move(-MAIN_FORCE);
+            //     motor.loopFOC();
+            //     delayMicroseconds(5);
+            //     motor.move(-MAIN_FORCE);
+            //     motor.loopFOC();
+            // }
             motor.P_angle.P = FOC_PID_P_DEFAULT;
             motor.P_angle.reset();
             motor.PID_velocity.reset();
@@ -103,7 +103,7 @@ void MotorHaptic::loopF4() {
         if(fabs(motor.shaft_angle - max_position) < DELTA_MAX_MIN_ZONE){
             max_count++;
             if(max_count > 3000){
-                motor.move(MAX_MIN_FORCE-1);
+                motor.move(MAX_MIN_FORCE-3);
                 motor.loopFOC();
                 vTaskDelay(5);
                 motor.move(-MAX_MIN_FORCE);
@@ -142,7 +142,7 @@ void MotorHaptic::loopF4() {
         if(fabs(motor.shaft_angle - min_position) < DELTA_MAX_MIN_ZONE){
             min_count++;
             if(min_count > 3000){
-                motor.move(-MAX_MIN_FORCE+1);
+                motor.move(-MAX_MIN_FORCE+3);
                 motor.loopFOC();
                 vTaskDelay(5);
                 motor.move(MAX_MIN_FORCE);

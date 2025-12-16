@@ -22,8 +22,8 @@
 
 #define DRIVER_VOLTAGE_POWER_SUPPLY  20
 
-#define FOC_VOLTAGE_LIMIT 19
-#define FOC_PID_P_DEFAULT 1140
+#define FOC_VOLTAGE_LIMIT 20
+#define FOC_PID_P_DEFAULT 1270
 #define FOC_PID_I_DEFAULT 0.001
 #define FOC_PID_D_DEFAULT 0.001
 #define FOC_PID_PV_DEFAULT 0.8
@@ -38,14 +38,14 @@
 #define CALIB_PD_P_VALUE 350.0f
 #define CALIB_PD_D_VALUE 0.01f
 #define CALIB_PD_I_VALUE 0.1f
-#define CALIB_TORQUE_VALUE 5.5f
+#define CALIB_TORQUE_VALUE 6.0f
 
 #define HAPTIC_OUT_ANGLE_DEFAULT (2.0f * PI / 180.0)
 #define HAPTIC_IN_ANGLE_DEFAULT  (0.25f * PI / 180.0)
 
 /* ----------------------------------------------------- */
 
-#define SUB_FOC_PID_P        200
+#define SUB_FOC_PID_P        400
 #define SUB_ANGLE_STEP       (1.0f * PI / 180.0f)
 #define SUB_FORCE            5.0f  
 
@@ -125,8 +125,8 @@ private:
     float min_position = 0;
 
     LoopMode current_function_mode = FUNCTION_MODE_DEFAULT;
-    void (MotorHaptic::*loop_function_ptr)() = &MotorHaptic::loopF2;
-    void (MotorHaptic::*setup_function_ptr)() = &MotorHaptic::setupF2;
+    void (MotorHaptic::*loop_function_ptr)() = &MotorHaptic::loopF0;
+    void (MotorHaptic::*setup_function_ptr)() = &MotorHaptic::setupF0;
 
 };
 
