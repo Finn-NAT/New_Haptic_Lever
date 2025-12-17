@@ -18,7 +18,7 @@ void MotorHaptic::setupF0() {
     motor.P_angle.P = FOC_PID_P_DEFAULT;
     motor.P_angle.D = FOC_PID_I_DEFAULT;
     motor.P_angle.I = FOC_PID_D_DEFAULT;
-    motor.controller = MotionControlType::angle;
+    //motor.controller = MotionControlType::angle;
     
     printf("LoopDefault initialized with basic haptic mode\n");
 }
@@ -30,45 +30,56 @@ void MotorHaptic::loopF0() {
     float error = home_angle - motor.shaft_angle;
     
     if (fabs(error) < angle_dead_zone) {
-        angle_dead_zone = MAIN_ANGLE_STEP;
         if(one_time) {
-            // if(error > 0) {
-            //     motor.move(MAIN_FORCE);
-            //     motor.loopFOC();
-            //     //delayMicroseconds(5);
-            //     motor.move(MAIN_FORCE);
-            //     motor.loopFOC();
-            // } else {
-            //     motor.move(-MAIN_FORCE);
-            //     motor.loopFOC();
-            //     //delayMicroseconds(5);
-            //     motor.move(-MAIN_FORCE);
-            //     motor.loopFOC();
-            // }
-            motor.P_angle.P = FOC_PID_P_DEFAULT;
-            motor.P_angle.reset();
-            motor.PID_velocity.reset();
-            motor.controller = MotionControlType::angle;
-            one_time = false;
-        }
-        motor.move(home_angle);
-        one_time_main = true;
-    }
-    else {
-        if(one_time_main) {
+            angle_dead_zone = fabs(motor.shaft_velocity)/25.0;
+            if(angle_dead_zone < MAIN_ANGLE_STEP) {
+                angle_dead_zone = MAIN_ANGLE_STEP;
+            }
+            printf("Deadzone: %.2f deg\n", angle_dead_zone * RAD_TO_DEG);
             if(error > 0) {
                 motor.move(MAIN_FORCE);
                 motor.loopFOC();
-                delayMicroseconds(5);
+                delayMicroseconds(1);
                 motor.move(MAIN_FORCE);
                 motor.loopFOC();
             } else {
                 motor.move(-MAIN_FORCE);
                 motor.loopFOC();
-                delayMicroseconds(5);
+                delayMicroseconds(1);
                 motor.move(-MAIN_FORCE);
                 motor.loopFOC();
             }
+            motor.P_angle.P = FOC_PID_P_DEFAULT;
+            motor.P_angle.reset();
+            motor.PID_velocity.reset();
+            //motor.controller = MotionControlType::angle;
+            one_time = false;
+        }
+        if(fabs(error) < MAIN_ANGLE_STEP/4 && fabs(motor.shaft_velocity) < 0.1f) {
+            angle_dead_zone = MAIN_ANGLE_STEP;
+        }
+	    float shaft_velocity_sp = motor.P_angle(home_angle - motor.shaft_angle );
+        shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
+        float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
+        current_sp = _constrain(current_sp,-11.4,11.4);
+        motor.move(current_sp);
+        one_time_main = true;
+    }
+    else {
+        if(one_time_main) {
+            // if(error > 0) {
+            //     motor.move(MAIN_FORCE);
+            //     motor.loopFOC();
+            //     delayMicroseconds(5);
+            //     motor.move(MAIN_FORCE);
+            //     motor.loopFOC();
+            // } else {
+            //     motor.move(-MAIN_FORCE);
+            //     motor.loopFOC();
+            //     delayMicroseconds(5);
+            //     motor.move(-MAIN_FORCE);
+            //     motor.loopFOC();
+            // }
             one_time_main = false;
         }
         one_time = true;

@@ -23,9 +23,9 @@
 #define DRIVER_VOLTAGE_POWER_SUPPLY  20
 
 #define FOC_VOLTAGE_LIMIT 20
-#define FOC_PID_P_DEFAULT 1270
+#define FOC_PID_P_DEFAULT 850
 #define FOC_PID_I_DEFAULT 0.001
-#define FOC_PID_D_DEFAULT 0.001
+#define FOC_PID_D_DEFAULT 1.0
 #define FOC_PID_PV_DEFAULT 0.8
 #define FOC_PID_IV_DEFAULT 0.1
 #define FOC_LOW_PASS_FILTER_VELOCITY 0.05
@@ -38,9 +38,9 @@
 #define CALIB_PD_P_VALUE 350.0f
 #define CALIB_PD_D_VALUE 0.01f
 #define CALIB_PD_I_VALUE 0.1f
-#define CALIB_TORQUE_VALUE 6.0f
+#define CALIB_TORQUE_VALUE 6.4f
 
-#define HAPTIC_OUT_ANGLE_DEFAULT (2.0f * PI / 180.0)
+#define HAPTIC_OUT_ANGLE_DEFAULT (1.8f * PI / 180.0)
 #define HAPTIC_IN_ANGLE_DEFAULT  (0.25f * PI / 180.0)
 
 /* ----------------------------------------------------- */

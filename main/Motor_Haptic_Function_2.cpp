@@ -14,7 +14,6 @@ void MotorHaptic::setupF2() {
     motor.P_angle.D = OUT_PID_D_VALUE;
     motor.P_angle.I = OUT_PID_I_VALUE;
     motor.controller = MotionControlType::torque;
-    printf("LoopF2 initialized with boundaries haptic mode\n");
 }
 
 void MotorHaptic::loopF2() {
@@ -26,6 +25,4 @@ void MotorHaptic::loopF2() {
     float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
     current_sp = _constrain(current_sp,-OUT_FORCE,OUT_FORCE);
     motor.move(current_sp);
-    // vTaskDelay(10);
-    // printf("Current Angle: %.2f | Target Angle: %.2f \n", motor.shaft_angle * RAD_TO_DEG, home_angle * RAD_TO_DEG);
 }
