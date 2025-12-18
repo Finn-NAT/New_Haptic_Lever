@@ -81,6 +81,7 @@ void MotorHaptic::calibrate() {
 	    old_angle = motor.shaft_angle; 
 	  }
     count = 0;
+    motor.move(0);
 
 	  while(1){
 	    for(int i = 0 ; i < 40; i++){
@@ -102,6 +103,7 @@ void MotorHaptic::calibrate() {
 	    old_angle = motor.shaft_angle; 
 	  }
     count = 0;
+    motor.move(0);
 
 	  home_angle = (max_position + min_position)/2;
 
@@ -111,7 +113,7 @@ void MotorHaptic::calibrate() {
     bool up_flag = false;
     bool down_flag = false;
     float delta_vec = 1.0f;
-    if(vec_tb > 1.4 && vec_tb < 1.7){
+    if(vec_tb > 1.5 && vec_tb < 1.75){
       break;
     }else if(vec_tb >= 1.7){
       if(up_flag && down_flag){
@@ -125,6 +127,8 @@ void MotorHaptic::calibrate() {
 
       haptic_out_force -= (0.75f / delta_vec);
       haptic_out_pid_p -= (7.5f / delta_vec);
+
+      haptic_default_pid_p = (50.0f / delta_vec);
 
       vec_tb = 0;
       count_vec = 0;

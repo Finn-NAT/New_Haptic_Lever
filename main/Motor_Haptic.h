@@ -18,7 +18,7 @@
 #define PIN_SPI_MISO  19
 #define PIN_SPI_MOSI  23
 
-#define PIN_SPI_CS    15  
+#define PIN_SPI_CS    5  
 
 #define DRIVER_VOLTAGE_POWER_SUPPLY  20
 
@@ -46,8 +46,7 @@
 /* ----------------------------------------------------- */
 
 #define SUB_FOC_PID_P        400
-#define SUB_ANGLE_STEP       (0.5f * PI / 180.0f)
-#define SUB_FORCE            6.0f  
+#define SUB_ANGLE_STEP       (0.55f * PI / 180.0f)
 
 #define MAIN_ANGLE_STEP      HAPTIC_OUT_ANGLE_DEFAULT
 #define MAIN_FORCE           19.0f
@@ -148,6 +147,11 @@ private:
     float haptic_out_pid_d = OUT_PID_D_VALUE;
     float haptic_out_pid_i = OUT_PID_I_VALUE;
     float haptic_out_force = OUT_FORCE;
+
+    float haptic_default_pid_p = FOC_PID_P_DEFAULT;
+    float haptic_default_pid_i = FOC_PID_I_DEFAULT;
+    float haptic_default_pid_d = FOC_PID_D_DEFAULT;
+
 };
 
 #endif 

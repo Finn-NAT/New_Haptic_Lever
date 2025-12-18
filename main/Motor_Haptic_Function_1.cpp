@@ -11,7 +11,6 @@ namespace FunctionF1 {
     float list_haptics[F1_MAX_HAPTICS];
     int current_haptic_index = F1_MAX_HAPTICS+1;
     bool one_time = false;
-    bool one_time_main = false;
     float angle_dead_zone = MAIN_ANGLE_STEP;
 }
 
@@ -31,11 +30,11 @@ void MotorHaptic::setupF1() {
     list_haptics[10] = list_haptics[8] + PI/18;
     list_haptics[11] = list_haptics[9] - PI/18;
 
-    motor.P_angle.P = FOC_PID_P_DEFAULT;
-    motor.P_angle.D = FOC_PID_I_DEFAULT;
-    motor.P_angle.I = FOC_PID_D_DEFAULT;
+    motor.P_angle.P = haptic_default_pid_p;
+    motor.P_angle.D = haptic_default_pid_i;
+    motor.P_angle.I = haptic_default_pid_d;
 
-    //motor.controller = MotionControlType::angle;
+    motor.controller = MotionControlType::torque;
 }
 
 void MotorHaptic::loopF1() {
@@ -50,7 +49,6 @@ void MotorHaptic::loopF1() {
             if(angle_dead_zone < MAIN_ANGLE_STEP) {
                 angle_dead_zone = MAIN_ANGLE_STEP;
             }
-            //printf("Deadzone: %.2f deg\n", angle_dead_zone * RAD_TO_DEG);
             if(error > 0) {
                 motor.move(MAIN_FORCE);
                 motor.loopFOC();
@@ -64,10 +62,9 @@ void MotorHaptic::loopF1() {
                 motor.move(-MAIN_FORCE);
                 motor.loopFOC();
             }
-            motor.P_angle.P = FOC_PID_P_DEFAULT;
+            motor.P_angle.P = haptic_default_pid_p;
             motor.P_angle.reset();
             motor.PID_velocity.reset();
-            //motor.controller = MotionControlType::angle;
             one_time = false;
         }
         if(fabs(error) < MAIN_ANGLE_STEP/4 && fabs(motor.shaft_velocity) < 0.1f) {
@@ -78,25 +75,11 @@ void MotorHaptic::loopF1() {
         float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
         current_sp = _constrain(current_sp,-11.4,11.4);
         motor.move(current_sp);
-        // one_time_main = true;
     }
     else {
         if(current_haptic_index < F1_MAX_HAPTICS && fabs(list_haptics[current_haptic_index] - motor.shaft_angle) < angle_dead_zone){
             angle_dead_zone  = SUB_ANGLE_STEP;
             if(one_time){
-                // if(fabs(list_haptics[current_haptic_index] - motor.shaft_angle) > 0){
-                //     motor.move(SUB_FORCE);
-                //     motor.loopFOC();
-                //     delayMicroseconds(5);
-                //     motor.move(SUB_FORCE);
-                //     motor.loopFOC();
-                // }else{
-                //     motor.move(-SUB_FORCE);
-                //     motor.loopFOC();
-                //     delayMicroseconds(5);
-                //     motor.move(-SUB_FORCE);
-                //     motor.loopFOC();
-                // }
                 motor.P_angle.P = SUB_FOC_PID_P;
                 motor.P_angle.reset();
                 motor.PID_velocity.reset();
@@ -105,22 +88,6 @@ void MotorHaptic::loopF1() {
             }
             motor.move(list_haptics[current_haptic_index]);
         }else{
-            // if(one_time_main){
-            //     if(error > 0){
-            //         motor.move(MAIN_FORCE);
-            //         motor.loopFOC();
-            //         delayMicroseconds(5);
-            //         motor.move(MAIN_FORCE);
-            //         motor.loopFOC();
-            //     }else{
-            //         motor.move(-MAIN_FORCE);
-            //         motor.loopFOC();
-            //         delayMicroseconds(5);
-            //         motor.move(-MAIN_FORCE);
-            //         motor.loopFOC();
-            //     }
-            //     one_time_main = false;
-            // }
             one_time = true;
             angle_dead_zone = HAPTIC_IN_ANGLE_DEFAULT;
             motor.controller = MotionControlType::torque;

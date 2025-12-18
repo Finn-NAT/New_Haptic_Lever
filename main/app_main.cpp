@@ -19,7 +19,7 @@
 
 #include "Motor_Haptic.h"
 
-motor_info_t motor_info = {26, 27, 14, 11, FOC_ZERO_ELECTRIC_ANGLE};
+motor_info_t motor_info = {32, 33, 25, 11, FOC_ZERO_ELECTRIC_ANGLE};
 MotorHaptic motorHaptic(motor_info, PIN_SPI_CS);
 
 #define UPDATED_LEVER_ID        0x01111110
@@ -40,28 +40,21 @@ typedef enum {
 #define RX_TASK_PRIO            8       //Receiving task priority
 #define EXAMPLE_TAG             "LEVER"
 
-// static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
-//Filter all other IDs except MSG_ID
-// static const twai_filter_config_t f_config = {.acceptance_code = (MSG_ID << 21),
-//                                               .acceptance_mask = ~(TWAI_STD_ID_MASK << 21),
-//                                               .single_filter = true
-//                                              };
-
+static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
 // Chỉ nhận 2 extended ID: 0x01111110 và 0x01111111
 // Extended ID được shift left 3 bits trong hardware register
 // acceptance_code: base ID (0x01111110) << 3
 // acceptance_mask: mask out bit thay đổi. 0 = must match, 1 = don't care
 //                  Bit cuối của ID khác nhau, nên mask bit đó = 1
 
-// static const twai_filter_config_t f_config = {
-//     .acceptance_code = (0x01111110 << 3),  // Base ID
-//     .acceptance_mask = (1 << 3),            // Don't care bit 0 của ID (bit 3 trong register)
-//     .single_filter = true
-// };
-// //Set to NO_ACK mode due to self testing with single module
-// static const twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPIO_NUM, RX_GPIO_NUM, TWAI_MODE_NO_ACK);
+static const twai_filter_config_t f_config = {
+    .acceptance_code = (0x01111110 << 3),  // Base ID
+    .acceptance_mask = (1 << 3),            // Don't care bit 0 của ID (bit 3 trong register)
+    .single_filter = true
+};
+//Set to NO_ACK mode due to self testing with single module
+static const twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPIO_NUM, RX_GPIO_NUM, TWAI_MODE_NO_ACK);
 
-static QueueHandle_t rx_task_queue;
 static SemaphoreHandle_t rx_sem;
 static SemaphoreHandle_t tx_sem;
 
@@ -69,7 +62,7 @@ static bool function_5_enabled = false;
 static float position_value = 0.0f;
 
 static bool change_mode_requested = false;
-static LoopMode current_mode = FUNCTION_MODE_1;
+static LoopMode current_mode = FUNCTION_MODE_DEFAULT;
 
 /* --------------------------- Tasks and Functions -------------------------- */
 
@@ -202,18 +195,16 @@ extern "C" void app_main() {
     tx_sem = xSemaphoreCreateBinary();
     xSemaphoreGive(tx_sem);
 
-    rx_task_queue = xQueueCreate(1, sizeof(rx_task_function_t));
+    //Install TWAI driver
+    ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
+    ESP_LOGI(EXAMPLE_TAG, "Driver installed");
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    ESP_ERROR_CHECK(twai_start());
+    ESP_LOGI(EXAMPLE_TAG, "Driver started");
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
-    // //Install TWAI driver
-    // ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
-    // ESP_LOGI(EXAMPLE_TAG, "Driver installed");
-    // vTaskDelay(pdMS_TO_TICKS(1000));
-    // ESP_ERROR_CHECK(twai_start());
-    // ESP_LOGI(EXAMPLE_TAG, "Driver started");
-    // vTaskDelay(pdMS_TO_TICKS(1000));
-
-    // xTaskCreatePinnedToCore(twai_transmit_task, "TWAI_tx", 4096, NULL, 8, NULL, 1);
-    // xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, 8, NULL, 1);
+    xTaskCreatePinnedToCore(twai_transmit_task, "TWAI_tx", 4096, NULL, 8, NULL, 1);
+    xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, 8, NULL, 1);
 
     // Tắt watchdog cho task này
     esp_task_wdt_deinit();
