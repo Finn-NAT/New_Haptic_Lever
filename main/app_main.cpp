@@ -19,7 +19,7 @@
 
 #include "Motor_Haptic.h"
 
-motor_info_t motor_info = {32, 33, 25, 11, FOC_ZERO_ELECTRIC_ANGLE};
+motor_info_t motor_info = {26, 27, 14, 11, FOC_ZERO_ELECTRIC_ANGLE};
 MotorHaptic motorHaptic(motor_info, PIN_SPI_CS);
 
 #define UPDATED_LEVER_ID        0x01111110
@@ -36,11 +36,11 @@ typedef enum {
 
 #define TX_GPIO_NUM             (gpio_num_t)13
 #define RX_GPIO_NUM             (gpio_num_t)15
-#define TX_TASK_PRIO            9       //Sending task priority
+#define TX_TASK_PRIO            8       //Sending task priority
 #define RX_TASK_PRIO            8       //Receiving task priority
 #define EXAMPLE_TAG             "LEVER"
 
-static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
+// static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
 //Filter all other IDs except MSG_ID
 // static const twai_filter_config_t f_config = {.acceptance_code = (MSG_ID << 21),
 //                                               .acceptance_mask = ~(TWAI_STD_ID_MASK << 21),
@@ -52,13 +52,14 @@ static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
 // acceptance_code: base ID (0x01111110) << 3
 // acceptance_mask: mask out bit thay đổi. 0 = must match, 1 = don't care
 //                  Bit cuối của ID khác nhau, nên mask bit đó = 1
-static const twai_filter_config_t f_config = {
-    .acceptance_code = (0x01111110 << 3),  // Base ID
-    .acceptance_mask = (1 << 3),            // Don't care bit 0 của ID (bit 3 trong register)
-    .single_filter = true
-};
-//Set to NO_ACK mode due to self testing with single module
-static const twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPIO_NUM, RX_GPIO_NUM, TWAI_MODE_NORMAL);
+
+// static const twai_filter_config_t f_config = {
+//     .acceptance_code = (0x01111110 << 3),  // Base ID
+//     .acceptance_mask = (1 << 3),            // Don't care bit 0 của ID (bit 3 trong register)
+//     .single_filter = true
+// };
+// //Set to NO_ACK mode due to self testing with single module
+// static const twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPIO_NUM, RX_GPIO_NUM, TWAI_MODE_NO_ACK);
 
 static QueueHandle_t rx_task_queue;
 static SemaphoreHandle_t rx_sem;
@@ -68,7 +69,7 @@ static bool function_5_enabled = false;
 static float position_value = 0.0f;
 
 static bool change_mode_requested = false;
-static LoopMode current_mode = FUNCTION_MODE_DEFAULT;
+static LoopMode current_mode = FUNCTION_MODE_1;
 
 /* --------------------------- Tasks and Functions -------------------------- */
 
@@ -110,7 +111,27 @@ static void twai_transmit_task(void *arg)
     while (1) {
         xSemaphoreTake(rx_sem, portMAX_DELAY);
         float_to_bytes(position_value, &tx_msg.data[0]);
-        ESP_ERROR_CHECK(twai_transmit(&tx_msg, portMAX_DELAY));
+
+        xSemaphoreTake(tx_sem, portMAX_DELAY);
+        tx_msg.data[4] = static_cast<uint8_t>(current_mode);
+        tx_msg.data[5] = static_cast<uint8_t>(motorHaptic.getMotorState());
+        xSemaphoreGive(tx_sem);
+        
+        // Không dùng ESP_ERROR_CHECK để tránh reset
+        esp_err_t result = twai_transmit(&tx_msg, pdMS_TO_TICKS(100));
+        
+        if (result == ESP_OK) {
+            // Gửi thành công
+        } else if (result == ESP_ERR_INVALID_STATE) {
+            // Driver bị bus-off hoặc stopped, thử recover
+            ESP_LOGW(EXAMPLE_TAG, "TWAI in invalid state, attempting recovery...");
+        } else if (result == ESP_ERR_TIMEOUT) {
+            // TX queue đầy, bỏ qua
+            ESP_LOGW(EXAMPLE_TAG, "TWAI TX timeout");
+        } else {
+            ESP_LOGE(EXAMPLE_TAG, "TWAI transmit error: 0x%x", result);
+        }
+        
         xSemaphoreGive(rx_sem);
 
         //ESP_LOGI(EXAMPLE_TAG, "twai_transmit_task running on core %d", xPortGetCoreID());
@@ -127,7 +148,21 @@ static void twai_receive_task(void *arg)
 
     while(1){
         //Receive message and print message data
-        ESP_ERROR_CHECK(twai_receive(&rx_message, portMAX_DELAY));
+        esp_err_t result = twai_receive(&rx_message, pdMS_TO_TICKS(1000));
+        
+        if (result != ESP_OK) {
+            if (result == ESP_ERR_TIMEOUT) {
+                // Timeout bình thường, tiếp tục loop
+                continue;
+            } else if (result == ESP_ERR_INVALID_STATE) {
+                ESP_LOGW(EXAMPLE_TAG, "TWAI RX invalid state");
+                continue;
+            } else {
+                ESP_LOGE(EXAMPLE_TAG, "TWAI receive error: 0x%x", result);
+                continue;
+            }
+        }
+        
         ESP_LOGI(EXAMPLE_TAG, "Msg received\tID 0x%lx\tData = %d", rx_message.identifier, rx_message.data[0]);
         if (rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == COMMAND_LEVER_ID) {   
             printf("Processing received message...\n");
@@ -146,7 +181,12 @@ static void twai_receive_task(void *arg)
             xSemaphoreTake(rx_sem, portMAX_DELAY);
             tx_message = rx_message;
             tx_message.data[0] = 0xFF;
-            ESP_ERROR_CHECK(twai_transmit(&tx_message, portMAX_DELAY));
+            
+            esp_err_t tx_result = twai_transmit(&tx_message, pdMS_TO_TICKS(100));
+            if (tx_result != ESP_OK) {
+                ESP_LOGW(EXAMPLE_TAG, "Failed to send reply: 0x%x", tx_result);
+            }
+            
             xSemaphoreGive(rx_sem);
         }else if(rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == UPDATED_LEVER_ID && function_5_enabled){   
             printf("Processing received message for position update...\n");
@@ -164,16 +204,16 @@ extern "C" void app_main() {
 
     rx_task_queue = xQueueCreate(1, sizeof(rx_task_function_t));
 
-    //Install TWAI driver
-    ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
-    ESP_LOGI(EXAMPLE_TAG, "Driver installed");
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    ESP_ERROR_CHECK(twai_start());
-    ESP_LOGI(EXAMPLE_TAG, "Driver started");
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    // //Install TWAI driver
+    // ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
+    // ESP_LOGI(EXAMPLE_TAG, "Driver installed");
+    // vTaskDelay(pdMS_TO_TICKS(1000));
+    // ESP_ERROR_CHECK(twai_start());
+    // ESP_LOGI(EXAMPLE_TAG, "Driver started");
+    // vTaskDelay(pdMS_TO_TICKS(1000));
 
-    xTaskCreatePinnedToCore(twai_transmit_task, "TWAI_tx", 4096, NULL, 8, NULL, 1);
-    xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, 8, NULL, 1);
+    // xTaskCreatePinnedToCore(twai_transmit_task, "TWAI_tx", 4096, NULL, 8, NULL, 1);
+    // xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, 8, NULL, 1);
 
     // Tắt watchdog cho task này
     esp_task_wdt_deinit();

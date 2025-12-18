@@ -50,61 +50,124 @@ void MotorHaptic::calibrate() {
   // max_position = home_angle + (60.0f * DEG_TO_RAD);
   // min_position = home_angle - (60.0f * DEG_TO_RAD);
 
+  setMotorState(HAPTIC_MOTOR_CALIB);
+
+  float vec_tb = 0;
+  uint32_t count_vec = 0;
+  int count = 0;
+
   motor.controller = MotionControlType::torque;
 
-	motor.loopFOC();
-	float old_angle = motor.shaft_angle;
-	int count = 0;
-	while(1){
-	  for(int i = 0 ; i < 40; i++){
-		motor.loopFOC();
-		motor.move(CALIB_TORQUE_VALUE);
-		delay(1);
-	  }
-	  if(fabs(motor.shaft_angle - old_angle) < 0.5*DEG_TO_RAD){
-		count++;
-		if(count > 20){
-		  max_position = motor.shaft_angle;
-		  break;
-		}
-  
-	  }
-	  old_angle = motor.shaft_angle; 
-	}
+  while(1){
+    float old_angle = motor.shaft_angle;
 
-	count = 0;
-	while(1){
-	  for(int i = 0 ; i < 40; i++){
-		motor.loopFOC();
-		motor.move(-CALIB_TORQUE_VALUE);
-		delay(1);
+	  motor.loopFOC();
+	  while(1){
+	    for(int i = 0 ; i < 40; i++){
+		  motor.loopFOC();
+		  motor.move(haptic_torque);
+		  delay(1);
+	    }
+	    if(fabs(motor.shaft_angle - old_angle) < 0.5*DEG_TO_RAD){
+		    count++;
+		    if(count > 20){
+		      max_position = motor.shaft_angle;
+		      break;
+		    }else{
+          vec_tb += fabs(motor.shaft_velocity);
+          count_vec++;
+        }
+	    }
+	    old_angle = motor.shaft_angle; 
 	  }
-	  if(fabs(motor.shaft_angle - old_angle) < 0.5*DEG_TO_RAD){
-		count++;
-		if(count > 20){
-		  min_position = motor.shaft_angle;
-		  break;
-		}
+    count = 0;
+
+	  while(1){
+	    for(int i = 0 ; i < 40; i++){
+		  motor.loopFOC();
+		  motor.move(-haptic_torque);
+		  delay(1);
+	    }
+	    if(fabs(motor.shaft_angle - old_angle) < 0.5*DEG_TO_RAD){
+		    count++;
+		    if(count > 20){
+		      min_position = motor.shaft_angle;
+		      break;
+		    }
+	    }else{
+        vec_tb += fabs(motor.shaft_velocity);
+        count_vec++;
+      }
+
+	    old_angle = motor.shaft_angle; 
 	  }
-	  old_angle = motor.shaft_angle; 
-	}
-	home_angle = (max_position + min_position)/2;
+    count = 0;
 
-    motor.P_angle.P = CALIB_PD_P_VALUE;
-    motor.P_angle.D = CALIB_PD_D_VALUE;
-    motor.P_angle.I = CALIB_PD_I_VALUE;
+	  home_angle = (max_position + min_position)/2;
 
-    motor.P_angle.reset();
-    motor.PID_velocity.reset();
+    vec_tb /= count_vec;
+    printf("Calibration done. vec_tb: %.2f - %ld\n", vec_tb, count_vec);
 
-	count = 0;
+    bool up_flag = false;
+    bool down_flag = false;
+    float delta_vec = 1.0f;
+    if(vec_tb > 1.4 && vec_tb < 1.7){
+      break;
+    }else if(vec_tb >= 1.7){
+      if(up_flag && down_flag){
+        delta_vec *= 2.0f;
+        up_flag = false;
+        down_flag = false;
+      }
+
+      haptic_torque -= (0.5f / delta_vec);
+      haptic_calib_p -= (5.0f / delta_vec);
+
+      haptic_out_force -= (0.75f / delta_vec);
+      haptic_out_pid_p -= (7.5f / delta_vec);
+
+      vec_tb = 0;
+      count_vec = 0;
+      down_flag = true;
+      printf("Decreasing torque to %.2f for next calibration attempt\n", haptic_torque);
+    }else{
+      if(up_flag && down_flag){
+        delta_vec *= 2.0f;
+        up_flag = false;
+        down_flag = false;
+      }
+
+      haptic_torque += (0.5f / delta_vec);
+      haptic_calib_p += (5.0f / delta_vec);
+
+      haptic_out_force += (0.75f / delta_vec);
+      haptic_out_pid_p += (7.5f / delta_vec);
+
+      vec_tb = 0;
+      count_vec = 0;
+      up_flag = true;
+      printf("Increasing torque to %.2f for next calibration attempt\n", haptic_torque);
+    }
+
+    vec_tb = 0;
+    count_vec = 0;
+    vTaskDelay(1000 / portTICK_PERIOD_MS); 
+  }
+
+  motor.P_angle.P = haptic_calib_p;
+  motor.P_angle.D = haptic_calib_d;
+  motor.P_angle.I = haptic_calib_i;
+
+  motor.P_angle.reset();
+  motor.PID_velocity.reset();
+
 	while(1){
 	    motor.loopFOC();
 	    float error =  motor.shaft_angle - home_angle;
 	    float shaft_velocity_sp = motor.P_angle(home_angle - motor.shaft_angle );
         shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
         float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
-        current_sp = _constrain(current_sp,-CALIB_TORQUE_VALUE,CALIB_TORQUE_VALUE);
+        current_sp = _constrain(current_sp,-haptic_torque,haptic_torque);
         motor.move(current_sp);
 	    if(fabs(error*RAD_TO_DEG) < 0.25){count++;}
 	    if(count > 50) {
@@ -119,6 +182,7 @@ void MotorHaptic::calibrate() {
 }
 
 void MotorHaptic::setup(){
+    setMotorState(HAPTIC_MOTOR_READY);
     (this->*setup_function_ptr)();
 }
 
