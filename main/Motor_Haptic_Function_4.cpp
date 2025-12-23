@@ -106,7 +106,7 @@ void MotorHaptic::loopF4() {
 
         if(fabs(motor.shaft_angle - max_position) < DELTA_MAX_MIN_ZONE){
             max_count++;
-            if(max_count > 3000){
+            if(max_count > 3500){
                 motor.move(MAX_MIN_FORCE-3);
                 motor.loopFOC();
                 vTaskDelay(5);
@@ -114,7 +114,7 @@ void MotorHaptic::loopF4() {
                 motor.loopFOC();
                 vTaskDelay(5);
             }
-            if(max_count > 3200){
+            if(max_count > 3700){
                 max_flag = false;
                 // for(int i = 0; i < 60; i++){
                 //     motor.move(-MAX_MIN_FORCE);
@@ -145,7 +145,7 @@ void MotorHaptic::loopF4() {
 
         if(fabs(motor.shaft_angle - min_position) < DELTA_MAX_MIN_ZONE){
             min_count++;
-            if(min_count > 3000){
+            if(min_count > 3500){
                 motor.move(-MAX_MIN_FORCE+3);
                 motor.loopFOC();
                 vTaskDelay(5);
@@ -153,7 +153,7 @@ void MotorHaptic::loopF4() {
                 motor.loopFOC();
                 vTaskDelay(5);
             }
-            if(min_count > 3200){
+            if(min_count > 3700){
                 min_flag = false;
                 // for(int i = 0; i < 60; i++){
                 //     motor.move(-MAX_MIN_FORCE);
@@ -184,7 +184,7 @@ void MotorHaptic::loopF4() {
             angle_dead_zone = HAPTIC_IN_ANGLE_DEFAULT;
             motor.controller = MotionControlType::torque;
             //motor.move(0);
-            motor.move(_constrain(-3*motor.shaft_velocity, -7.0, 7.0));
+            motor.move(_constrain(-friction_alpha*motor.shaft_velocity, -friction_force_max, friction_force_max));
             for(int i = 0; i < F4_MAX_HAPTICS; i++){
                 float sub_error = list_haptics[i] - motor.shaft_angle;
                 if(fabs(sub_error) < angle_dead_zone){

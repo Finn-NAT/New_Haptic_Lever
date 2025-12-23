@@ -40,7 +40,7 @@ void MotorHaptic::init() {
     }
     motor.initFOC();
     
-    printf("MotorHaptic initialized successfully\n");
+    printf("MotorHaptic initialized successfully: (zero_electric_angle = %.8f)\n", motor.zero_electric_angle);
 }
 
 // Calibration routine
@@ -91,6 +91,7 @@ void MotorHaptic::calibrate() {
 	    }
 	    if(fabs(motor.shaft_angle - old_angle) < 0.5*DEG_TO_RAD){
 		    count++;
+        //printf("Count for min: %d\n", count);
 		    if(count > 20){
 		      min_position = motor.shaft_angle;
 		      break;
@@ -113,7 +114,8 @@ void MotorHaptic::calibrate() {
     bool up_flag = false;
     bool down_flag = false;
     float delta_vec = 1.0f;
-    if(vec_tb > 1.5 && vec_tb < 1.75){
+    if(vec_tb > 1.5 && vec_tb < 1.7){
+      printf("Calibration successful!\n");
       break;
     }else if(vec_tb >= 1.7){
       if(up_flag && down_flag){
@@ -128,7 +130,15 @@ void MotorHaptic::calibrate() {
       haptic_out_force -= (0.75f / delta_vec);
       haptic_out_pid_p -= (7.5f / delta_vec);
 
-      haptic_default_pid_p = (50.0f / delta_vec);
+      haptic_default_pid_p -= (50.0f / delta_vec);
+
+      if(friction_alpha < 3.0f){
+        friction_alpha += 0.5f / delta_vec;
+      }
+
+      if(friction_force_max < 7.0f){
+        friction_force_max += 1.0f / delta_vec;
+      }
 
       vec_tb = 0;
       count_vec = 0;
@@ -146,6 +156,16 @@ void MotorHaptic::calibrate() {
 
       haptic_out_force += (0.75f / delta_vec);
       haptic_out_pid_p += (7.5f / delta_vec);
+
+      haptic_default_pid_p += (50.0f / delta_vec);
+
+      if(friction_alpha > 0.5f){
+        friction_alpha -= 0.5f / delta_vec;
+      }
+
+      if(friction_force_max > 2.0f){
+        friction_force_max -= 1.0f / delta_vec;
+      }
 
       vec_tb = 0;
       count_vec = 0;
@@ -220,6 +240,10 @@ void MotorHaptic::setLoopMode(LoopMode mode) {
         case FUNCTION_MODE_4:
             loop_function_ptr = &MotorHaptic::loopF4;
             setup_function_ptr = &MotorHaptic::setupF4;
+            break;
+        case FUNCTION_MODE_DEMO:
+            loop_function_ptr = &MotorHaptic::loopDemo;
+            setup_function_ptr = &MotorHaptic::setupDemo;
             break;
         default:
             loop_function_ptr = &MotorHaptic::loopF0;

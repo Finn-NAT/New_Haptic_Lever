@@ -66,7 +66,7 @@ void MotorHaptic::loopF0() {
         one_time = true;
         angle_dead_zone = HAPTIC_IN_ANGLE_DEFAULT;
         motor.controller = MotionControlType::torque;
-        motor.move(_constrain(-3*motor.shaft_velocity, -7.0, 7.0));
+        motor.move(_constrain(-friction_alpha*motor.shaft_velocity, -friction_force_max, friction_force_max));
         //motor.move(0);
     }
 }

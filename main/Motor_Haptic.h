@@ -33,7 +33,7 @@
 #define FOC_VOLTAGE_SENSOR_ALIGN 5
 #define FOC_SENSOR_DIRCTION  Direction::CCW
 
-#define FOC_ZERO_ELECTRIC_ANGLE  NOT_SET  
+#define FOC_ZERO_ELECTRIC_ANGLE  5.75549555f //NOT_SET  
 
 #define CALIB_PD_P_VALUE 350.0f
 #define CALIB_PD_D_VALUE 0.01f
@@ -72,7 +72,9 @@ enum LoopMode {
     FUNCTION_MODE_2 = 2,  // Boundaries Haptic
     FUNCTION_MODE_3 = 3,  // Haptic with 6 detents + boundaries
     FUNCTION_MODE_4 = 4,  // Haptic with 12 detents + boundaries + vibration
-    FUNCTION_MODE_DEFAULT = 0  // Basic haptic mode
+    FUNCTION_MODE_DEFAULT = 0,  // Basic haptic mode
+
+    FUNCTION_MODE_DEMO = 255,
 };
 
 enum HapticMotorState {
@@ -108,12 +110,19 @@ public:
     void setupF3();
     void setupF4();
 
+    void setupDemo();
+
     // Different loop implementations
     void loopF0();  // Basic haptic mode
     void loopF1();  // Haptic with 12 detents
     void loopF2();  // Boundaries Haptic
     void loopF3();  // Haptic with 6 detents + boundaries
     void loopF4();  // Haptic with 12 detents + boundaries + vibration
+
+    void loopDemo();
+
+    float TargetPositionDemo = 0.0f;
+    bool function_demo_enabled = false;
 
     // Motor control methods
     float setTorquePercent(float percent);
@@ -151,6 +160,9 @@ private:
     float haptic_default_pid_p = FOC_PID_P_DEFAULT;
     float haptic_default_pid_i = FOC_PID_I_DEFAULT;
     float haptic_default_pid_d = FOC_PID_D_DEFAULT;
+
+    float friction_alpha = 3.0f;
+    float friction_force_max = 7.0f;
 
 };
 

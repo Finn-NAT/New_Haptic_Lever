@@ -58,8 +58,8 @@ static const twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPI
 static SemaphoreHandle_t rx_sem;
 static SemaphoreHandle_t tx_sem;
 
-static bool function_5_enabled = false;
 static float position_value = 0.0f;
+static float received_position_value = 0.0f;
 
 static bool change_mode_requested = false;
 static LoopMode current_mode = FUNCTION_MODE_DEFAULT;
@@ -109,20 +109,21 @@ static void twai_transmit_task(void *arg)
         tx_msg.data[4] = static_cast<uint8_t>(current_mode);
         tx_msg.data[5] = static_cast<uint8_t>(motorHaptic.getMotorState());
         xSemaphoreGive(tx_sem);
+
+        if(!motorHaptic.function_demo_enabled){
+            esp_err_t result = twai_transmit(&tx_msg, pdMS_TO_TICKS(100));
         
-        // Không dùng ESP_ERROR_CHECK để tránh reset
-        esp_err_t result = twai_transmit(&tx_msg, pdMS_TO_TICKS(100));
-        
-        if (result == ESP_OK) {
-            // Gửi thành công
-        } else if (result == ESP_ERR_INVALID_STATE) {
-            // Driver bị bus-off hoặc stopped, thử recover
-            ESP_LOGW(EXAMPLE_TAG, "TWAI in invalid state, attempting recovery...");
-        } else if (result == ESP_ERR_TIMEOUT) {
-            // TX queue đầy, bỏ qua
-            ESP_LOGW(EXAMPLE_TAG, "TWAI TX timeout");
-        } else {
-            ESP_LOGE(EXAMPLE_TAG, "TWAI transmit error: 0x%x", result);
+            if (result == ESP_OK) {
+                // Gửi thành công
+            } else if (result == ESP_ERR_INVALID_STATE) {
+                // Driver bị bus-off hoặc stopped, thử recover
+                ESP_LOGW(EXAMPLE_TAG, "TWAI in invalid state");
+            } else if (result == ESP_ERR_TIMEOUT) {
+                // TX queue đầy, bỏ qua
+                ESP_LOGW(EXAMPLE_TAG, "TWAI TX timeout");
+            } else {
+                ESP_LOGE(EXAMPLE_TAG, "TWAI transmit error: 0x%x", result);
+            }            
         }
         
         xSemaphoreGive(rx_sem);
@@ -169,6 +170,11 @@ static void twai_receive_task(void *arg)
                 current_mode = static_cast<LoopMode>(rx_message.data[0]);
                 printf("Requested mode change to %d\n", current_mode);
             }
+            if(current_mode == FUNCTION_MODE_DEMO){
+                motorHaptic.function_demo_enabled = true;
+            }else{
+                motorHaptic.function_demo_enabled = false;
+            }
             xSemaphoreGive(tx_sem);
 
             xSemaphoreTake(rx_sem, portMAX_DELAY);
@@ -181,9 +187,39 @@ static void twai_receive_task(void *arg)
             }
             
             xSemaphoreGive(rx_sem);
-        }else if(rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == UPDATED_LEVER_ID && function_5_enabled){   
+        }else if(rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == UPDATED_LEVER_ID && motorHaptic.function_demo_enabled){   
             printf("Processing received message for position update...\n");
+            xSemaphoreTake(tx_sem, portMAX_DELAY);
+            received_position_value = bytes_to_float(&rx_message.data[0]);
+            xSemaphoreGive(tx_sem);
+
         }
+    }
+}
+
+static void demo_function_selftest(void *arg){
+    // This task runs on core 1
+    ESP_LOGI(EXAMPLE_TAG, "demo_function_selftest running on core %d", xPortGetCoreID());
+    float delta = 2.0f * DEG_TO_RAD;
+
+    while(1){
+        if(motorHaptic.function_demo_enabled){
+            xSemaphoreTake(tx_sem, portMAX_DELAY);
+            received_position_value += delta;
+            if(received_position_value > 60.0f * DEG_TO_RAD){
+                delta = -2.0f * DEG_TO_RAD;
+            }
+            else if(received_position_value < -60.0f * DEG_TO_RAD){
+                delta = 2.0f * DEG_TO_RAD;
+            }
+            xSemaphoreGive(tx_sem);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            
+        }
+        else{
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        
     }
 }
 
@@ -205,6 +241,8 @@ extern "C" void app_main() {
 
     xTaskCreatePinnedToCore(twai_transmit_task, "TWAI_tx", 4096, NULL, 8, NULL, 1);
     xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, 8, NULL, 1);
+
+    xTaskCreatePinnedToCore(demo_function_selftest, "Demo Function Selftest", 4096, NULL, 8, NULL, 1);
 
     // Tắt watchdog cho task này
     esp_task_wdt_deinit();
@@ -229,6 +267,10 @@ extern "C" void app_main() {
         motorHaptic.setup();
         while(1) {
             motorHaptic.loop();
+
+            xSemaphoreTake(tx_sem, portMAX_DELAY);
+            motorHaptic.TargetPositionDemo = received_position_value;
+            xSemaphoreGive(tx_sem);
 
             xSemaphoreTake(rx_sem, portMAX_DELAY); 
             position_value = motorHaptic.getPosition();

@@ -120,7 +120,7 @@ void MotorHaptic::loopF3() {
             angle_dead_zone = HAPTIC_IN_ANGLE_DEFAULT;
             motor.controller = MotionControlType::torque;
             //motor.move(0);
-            motor.move(_constrain(-3*motor.shaft_velocity, -7.0, 7.0));
+            motor.move(_constrain(-friction_alpha*motor.shaft_velocity, -friction_force_max, friction_force_max));
             for(int i = 0; i < F3_MAX_HAPTICS; i++){
                 float sub_error = list_haptics[i] - motor.shaft_angle;
                 if(fabs(sub_error) < angle_dead_zone){
