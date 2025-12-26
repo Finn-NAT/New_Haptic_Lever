@@ -4,7 +4,7 @@
    LOOP MODE 3 - Haptic with 6 detents + boundaries
    ============================================================================ */
 
-#define F3_MAX_HAPTICS          6
+#define F3_MAX_HAPTICS          8
 
 // Static variables for Function3
 namespace FunctionF3 {
@@ -26,9 +26,11 @@ void MotorHaptic::setupF3() {
     list_haptics[3] = list_haptics[1] - PI/18;
     list_haptics[4] = list_haptics[2] + PI/18;
     list_haptics[5] = list_haptics[3] - PI/18;
+    list_haptics[6] = list_haptics[4] + PI/18;
+    list_haptics[7] = list_haptics[5] - PI/18;
 
-    max_position_haptic = list_haptics[4] + PI/18;
-    min_position_haptic = list_haptics[5] - PI/18;
+    max_position_haptic = list_haptics[6] + PI/18;
+    min_position_haptic = list_haptics[7] - PI/18;
 
     motor.P_angle.P = haptic_default_pid_p;
     motor.P_angle.D = haptic_default_pid_i;
@@ -47,7 +49,7 @@ void MotorHaptic::loopF3() {
     float error = home_angle - motor.shaft_angle;
     if (fabs(error) < angle_dead_zone) {
         if(one_time) {
-            angle_dead_zone = fabs(motor.shaft_velocity)/22.5;
+            angle_dead_zone = fabs(motor.shaft_velocity)/40.0f;
             if(angle_dead_zone < MAIN_ANGLE_STEP) {
                 angle_dead_zone = MAIN_ANGLE_STEP;
             }

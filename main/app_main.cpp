@@ -23,7 +23,7 @@ motor_info_t motor_info = {32, 33, 25, 11, FOC_ZERO_ELECTRIC_ANGLE};
 MotorHaptic motorHaptic(motor_info, PIN_SPI_CS);
 
 #define UPDATED_LEVER_ID        0x01111110
-#define COMMAND_LEVER_ID        0x01111111
+#define COMMAND_LEVER_ID        0x01111121
 
 typedef enum {
     DISABLE_FUNCTION = 0,
@@ -47,11 +47,12 @@ static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
 // acceptance_mask: mask out bit thay đổi. 0 = must match, 1 = don't care
 //                  Bit cuối của ID khác nhau, nên mask bit đó = 1
 
-static const twai_filter_config_t f_config = {
-    .acceptance_code = (0x01111110 << 3),  // Base ID
-    .acceptance_mask = (1 << 3),            // Don't care bit 0 của ID (bit 3 trong register)
-    .single_filter = true
-};
+static const twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+// static const twai_filter_config_t f_config = {
+//     .acceptance_code = (0x01111110 << 3),  // Base ID
+//     .acceptance_mask = (1 << 3),            // Don't care bit 0 của ID (bit 3 trong register)
+//     .single_filter = true
+// };
 //Set to NO_ACK mode due to self testing with single module
 static const twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPIO_NUM, RX_GPIO_NUM, TWAI_MODE_NO_ACK);
 
@@ -157,7 +158,7 @@ static void twai_receive_task(void *arg)
             }
         }
         
-        ESP_LOGI(EXAMPLE_TAG, "Msg received\tID 0x%lx\tData = %d", rx_message.identifier, rx_message.data[0]);
+        //ESP_LOGI(EXAMPLE_TAG, "Msg received\tID 0x%lx\tData = %d", rx_message.identifier, rx_message.data[0]);
         if (rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == COMMAND_LEVER_ID) {   
             printf("Processing received message...\n");
 
@@ -188,7 +189,7 @@ static void twai_receive_task(void *arg)
             
             xSemaphoreGive(rx_sem);
         }else if(rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == UPDATED_LEVER_ID && motorHaptic.function_demo_enabled){   
-            printf("Processing received message for position update...\n");
+            //printf("Processing received message for position update...\n");
             xSemaphoreTake(tx_sem, portMAX_DELAY);
             received_position_value = bytes_to_float(&rx_message.data[0]);
             xSemaphoreGive(tx_sem);
@@ -200,17 +201,17 @@ static void twai_receive_task(void *arg)
 static void demo_function_selftest(void *arg){
     // This task runs on core 1
     ESP_LOGI(EXAMPLE_TAG, "demo_function_selftest running on core %d", xPortGetCoreID());
-    float delta = 2.0f * DEG_TO_RAD;
+    float delta = 1.0f * DEG_TO_RAD;
 
     while(1){
         if(motorHaptic.function_demo_enabled){
             xSemaphoreTake(tx_sem, portMAX_DELAY);
             received_position_value += delta;
             if(received_position_value > 60.0f * DEG_TO_RAD){
-                delta = -2.0f * DEG_TO_RAD;
+                delta = -1.0f * DEG_TO_RAD;
             }
             else if(received_position_value < -60.0f * DEG_TO_RAD){
-                delta = 2.0f * DEG_TO_RAD;
+                delta = 1.0f * DEG_TO_RAD;
             }
             xSemaphoreGive(tx_sem);
             vTaskDelay(pdMS_TO_TICKS(10));
@@ -242,7 +243,7 @@ extern "C" void app_main() {
     xTaskCreatePinnedToCore(twai_transmit_task, "TWAI_tx", 4096, NULL, 8, NULL, 1);
     xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, 8, NULL, 1);
 
-    xTaskCreatePinnedToCore(demo_function_selftest, "Demo Function Selftest", 4096, NULL, 8, NULL, 1);
+    //xTaskCreatePinnedToCore(demo_function_selftest, "Demo Function Selftest", 4096, NULL, 8, NULL, 1);
 
     // Tắt watchdog cho task này
     esp_task_wdt_deinit();
@@ -266,11 +267,11 @@ extern "C" void app_main() {
         motorHaptic.calibrate();
         motorHaptic.setup();
         while(1) {
-            motorHaptic.loop();
-
             xSemaphoreTake(tx_sem, portMAX_DELAY);
             motorHaptic.TargetPositionDemo = received_position_value;
             xSemaphoreGive(tx_sem);
+            
+            motorHaptic.loop();
 
             xSemaphoreTake(rx_sem, portMAX_DELAY); 
             position_value = motorHaptic.getPosition();

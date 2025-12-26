@@ -27,11 +27,18 @@ void MotorHaptic::loopF0() {
     using namespace FunctionF0;
     
     motor.loopFOC();
+
+	    // float shaft_velocity_sp = motor.P_angle(home_angle - motor.shaft_angle );
+        // shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
+        // float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
+        // current_sp = _constrain(current_sp,-11.
+        
     float error = home_angle - motor.shaft_angle;
     
     if (fabs(error) < angle_dead_zone) {
         if(one_time) {
-            angle_dead_zone = fabs(motor.shaft_velocity)/22.5;
+            angle_dead_zone = fabs(motor.shaft_velocity)/40.0f;
+            //printf("Angle dead zone updated to: %f\n", angle_dead_zone*RAD_TO_DEG);
             if(angle_dead_zone < MAIN_ANGLE_STEP) {
                 angle_dead_zone = MAIN_ANGLE_STEP;
             }

@@ -45,7 +45,7 @@ void MotorHaptic::loopF1() {
 
     if (fabs(error) < angle_dead_zone) {
         if(one_time) {
-            angle_dead_zone = fabs(motor.shaft_velocity)/22.5;
+            angle_dead_zone = fabs(motor.shaft_velocity)/40.0f;
             if(angle_dead_zone < MAIN_ANGLE_STEP) {
                 angle_dead_zone = MAIN_ANGLE_STEP;
             }
