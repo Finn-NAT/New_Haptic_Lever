@@ -16,6 +16,9 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "driver/twai.h"
+#include "esp_partition.h"
+#include "esp_system.h"
+#include "esp_ota_ops.h"
 
 #include "Motor_Haptic.h"
 
@@ -23,7 +26,7 @@ motor_info_t motor_info = {32, 33, 25, 11, FOC_ZERO_ELECTRIC_ANGLE};
 MotorHaptic motorHaptic(motor_info, PIN_SPI_CS);
 
 #define UPDATED_LEVER_ID        0x01111110
-#define COMMAND_LEVER_ID        0x01111121
+#define COMMAND_LEVER_ID        0x01111111
 
 typedef enum {
     DISABLE_FUNCTION = 0,
@@ -64,6 +67,9 @@ static float received_position_value = 0.0f;
 
 static bool change_mode_requested = false;
 static LoopMode current_mode = FUNCTION_MODE_DEFAULT;
+
+#define BOOTLOADER_TRIGGER   255
+static bool bootloader_triggered = false;
 
 /* --------------------------- Tasks and Functions -------------------------- */
 
@@ -166,15 +172,24 @@ static void twai_receive_task(void *arg)
             // xQueueSend(rx_task_queue, &rx_func, portMAX_DELAY);
 
             xSemaphoreTake(tx_sem, portMAX_DELAY);
-            if(current_mode != static_cast<LoopMode>(rx_message.data[0])){
+            LoopMode mode = static_cast<LoopMode>(rx_message.data[0]);
+            if((mode < FUNCTION_MODE_DEFAULT || mode > FUNCTION_MODE_DEMO) && mode != BOOTLOADER_TRIGGER){
+                printf("Received invalid mode %d, ignoring...\n", mode);
+                xSemaphoreGive(tx_sem);
+                continue;
+            }
+            if(current_mode != mode){
                 change_mode_requested = true;
-                current_mode = static_cast<LoopMode>(rx_message.data[0]);
+                current_mode = mode;
                 printf("Requested mode change to %d\n", current_mode);
             }
             if(current_mode == FUNCTION_MODE_DEMO){
                 motorHaptic.function_demo_enabled = true;
             }else{
                 motorHaptic.function_demo_enabled = false;
+            }
+            if(current_mode == BOOTLOADER_TRIGGER){
+                bootloader_triggered = true;
             }
             xSemaphoreGive(tx_sem);
 
@@ -223,6 +238,47 @@ static void demo_function_selftest(void *arg){
         
     }
 }
+static void BacktoCANBootloader()
+{
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    const esp_partition_t *factory = esp_partition_find_first(
+        ESP_PARTITION_TYPE_APP,
+        ESP_PARTITION_SUBTYPE_APP_FACTORY,
+        NULL);
+
+    if (!running) {
+        ESP_LOGE(EXAMPLE_TAG, "Running partition is NULL (unexpected)");
+        return;
+    }
+
+    ESP_LOGI(EXAMPLE_TAG, "Button pressed. Running: label=%s subtype=0x%02x offset=0x%08x",
+        running->label, running->subtype, (unsigned)running->address);
+
+    if (running->subtype == ESP_PARTITION_SUBTYPE_APP_FACTORY) {
+        ESP_LOGI(EXAMPLE_TAG, "Already running factory. Do nothing.");
+        return;
+    }
+
+    if (!factory) {
+        ESP_LOGE(EXAMPLE_TAG, "No factory app partition found. Can't rollback.");
+        return;
+    }
+
+    ESP_LOGW(EXAMPLE_TAG, "Switching boot partition to factory (label=%s offset=0x%08x) and restarting...",
+             factory->label, (unsigned)factory->address);
+
+    esp_err_t err = esp_ota_set_boot_partition(factory);
+    if (err != ESP_OK) {
+        ESP_LOGE(EXAMPLE_TAG, "esp_ota_set_boot_partition failed: %s", esp_err_to_name(err));
+        return;
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    printf("Restarting to factory partition...\n");
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    fflush(stdout);
+    esp_restart();
+}
 
 extern "C" void app_main() {
 
@@ -261,6 +317,10 @@ extern "C" void app_main() {
     motorHaptic.init();
 
     while (1) {
+        if(bootloader_triggered){
+            printf("Bootloader triggered! Restarting to bootloader...\n");
+            BacktoCANBootloader();
+        }
         motorHaptic.setLoopMode(current_mode);
         printf("Set loop mode to %d\n", current_mode);
 

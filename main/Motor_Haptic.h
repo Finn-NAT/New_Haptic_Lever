@@ -74,7 +74,7 @@ enum LoopMode {
     FUNCTION_MODE_4 = 4,  // Haptic with 12 detents + boundaries + vibration
     FUNCTION_MODE_DEFAULT = 0,  // Basic haptic mode
 
-    FUNCTION_MODE_DEMO = 255,
+    FUNCTION_MODE_DEMO = 5  // Function demo mode,
 };
 
 enum HapticMotorState {

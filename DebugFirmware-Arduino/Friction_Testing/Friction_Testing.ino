@@ -58,7 +58,7 @@ void setup() {
   motor.init();
   motor.sensor_direction = Direction::CCW;
   motor.voltage_sensor_align = VOLTAGE_SENSOR_ALIGN;
-  motor.zero_electric_angle = 5.5633659;
+  // motor.zero_electric_angle = 5.5633659;
   motor.initFOC();
   Serial.println(motor.zero_electric_angle, 7);
   
@@ -74,51 +74,51 @@ void loop() {
 
   motor.loopFOC();
 
-  // if (++roll_counter >= 4000) {
-  //   force = -force;
-  //   roll_counter = 0;
-  //   if(force > 0){
-  //       for(int i = 0; i < 1000; i++) {
-  //         motor.loopFOC();
-  //         motor.move(0);
-  //         delay(1); // 1ms x 3000 = 3s
-  //       }
-  //       loop_counter++;
-  //       Serial.print("Loop counter: ");
-  //       Serial.println((unsigned long)loop_counter);
+  if (++roll_counter >= 4000) {
+    force = -force;
+    roll_counter = 0;
+    if(force > 0){
+        for(int i = 0; i < 500; i++) {
+          motor.loopFOC();
+          motor.move(0);
+          delay(1); // 1ms x 3000 = 3s
+        }
+        loop_counter++;
+        Serial.print("Loop counter: ");
+        Serial.println((unsigned long)loop_counter);
         
-  //       // Lưu vào flash mỗi 1000 cycles
-  //       if(loop_counter % 1000 == 0) {
-  //         preferences.putULong64("loop_count", loop_counter);
-  //         Serial.println(">>> Saved to flash!");
-  //         for(int i = 0; i < 150000; i++) {
-  //           motor.loopFOC();
-  //           motor.move(0);
-  //           delay(1); 
-  //         }
-  //       }
+        // Lưu vào flash mỗi 1000 cycles
+        if(loop_counter % 500 == 0) {
+          preferences.putULong64("loop_count", loop_counter);
+          Serial.println(">>> Saved to flash!");
+          for(int i = 0; i < 150000; i++) {
+            motor.loopFOC();
+            motor.move(0);
+            delay(1); 
+          }
+        }
 
-  //   }else{
-  //       for(int i = 0; i < 200; i++) {
-  //         motor.loopFOC();
-  //         motor.move(0);
-  //         delay(1); 
-  //       }
-  //   }
-  // }
-
-  // motor.move(force);
-
-
-  motor.move(6);
-
-  // Print less frequently to further smooth the visual plot
-  if (++print_counter >= print_every) {
-    Serial.print("motor velocity: ");
-    Serial.println(motor.shaft_velocity);
-    print_counter = 0;
+    }else{
+        for(int i = 0; i < 200; i++) {
+          motor.loopFOC();
+          motor.move(0);
+          delay(1); 
+        }
+    }
   }
-  _delay(1);
+
+  motor.move(force);
+
+
+  // motor.move(6);
+
+  // // Print less frequently to further smooth the visual plot
+  // if (++print_counter >= print_every) {
+  //   Serial.print("motor velocity: ");
+  //   Serial.println(motor.shaft_velocity);
+  //   print_counter = 0;
+  // }
+  // _delay(1);
 
 
 }
