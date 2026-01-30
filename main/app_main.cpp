@@ -28,35 +28,12 @@ MotorHaptic motorHaptic(motor_info, PIN_SPI_CS);
 #define UPDATED_LEVER_ID        0x01111110
 #define COMMAND_LEVER_ID        0x01111111
 
-typedef enum {
-    DISABLE_FUNCTION = 0,
-    ENABLE_FUNCTION_1,
-    ENABLE_FUNCTION_2,
-    ENABLE_FUNCTION_3,
-    ENABLE_FUNCTION_4,
-    ENABLE_FUNCTION_5
-} rx_task_function_t;
-
 #define TX_GPIO_NUM             (gpio_num_t)13
 #define RX_GPIO_NUM             (gpio_num_t)15
-#define TX_TASK_PRIO            8       //Sending task priority
-#define RX_TASK_PRIO            8       //Receiving task priority
 #define EXAMPLE_TAG             "LEVER"
 
 static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
-// Chỉ nhận 2 extended ID: 0x01111110 và 0x01111111
-// Extended ID được shift left 3 bits trong hardware register
-// acceptance_code: base ID (0x01111110) << 3
-// acceptance_mask: mask out bit thay đổi. 0 = must match, 1 = don't care
-//                  Bit cuối của ID khác nhau, nên mask bit đó = 1
-
 static const twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
-// static const twai_filter_config_t f_config = {
-//     .acceptance_code = (0x01111110 << 3),  // Base ID
-//     .acceptance_mask = (1 << 3),            // Don't care bit 0 của ID (bit 3 trong register)
-//     .single_filter = true
-// };
-//Set to NO_ACK mode due to self testing with single module
 static const twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPIO_NUM, RX_GPIO_NUM, TWAI_MODE_NO_ACK);
 
 static SemaphoreHandle_t rx_sem;
@@ -145,7 +122,6 @@ static void twai_receive_task(void *arg)
 {
     twai_message_t rx_message;
     twai_message_t tx_message;
-    rx_task_function_t rx_func;
 
     while(1){
         //Receive message and print message data
@@ -167,9 +143,6 @@ static void twai_receive_task(void *arg)
         //ESP_LOGI(EXAMPLE_TAG, "Msg received\tID 0x%lx\tData = %d", rx_message.identifier, rx_message.data[0]);
         if (rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == COMMAND_LEVER_ID) {   
             printf("Processing received message...\n");
-
-            // rx_func = (rx_task_function_t)rx_message.data[0];
-            // xQueueSend(rx_task_queue, &rx_func, portMAX_DELAY);
 
             xSemaphoreTake(tx_sem, portMAX_DELAY);
             LoopMode mode = static_cast<LoopMode>(rx_message.data[0]);
@@ -213,31 +186,32 @@ static void twai_receive_task(void *arg)
     }
 }
 
-static void demo_function_selftest(void *arg){
-    // This task runs on core 1
-    ESP_LOGI(EXAMPLE_TAG, "demo_function_selftest running on core %d", xPortGetCoreID());
-    float delta = 1.0f * DEG_TO_RAD;
+// static void demo_function_selftest(void *arg){
+//     // This task runs on core 1
+//     ESP_LOGI(EXAMPLE_TAG, "demo_function_selftest running on core %d", xPortGetCoreID());
+//     float delta = 1.0f * DEG_TO_RAD;
 
-    while(1){
-        if(motorHaptic.function_demo_enabled){
-            xSemaphoreTake(tx_sem, portMAX_DELAY);
-            received_position_value += delta;
-            if(received_position_value > 60.0f * DEG_TO_RAD){
-                delta = -1.0f * DEG_TO_RAD;
-            }
-            else if(received_position_value < -60.0f * DEG_TO_RAD){
-                delta = 1.0f * DEG_TO_RAD;
-            }
-            xSemaphoreGive(tx_sem);
-            vTaskDelay(pdMS_TO_TICKS(10));
+//     while(1){
+//         if(motorHaptic.function_demo_enabled){
+//             xSemaphoreTake(tx_sem, portMAX_DELAY);
+//             received_position_value += delta;
+//             if(received_position_value > 60.0f * DEG_TO_RAD){
+//                 delta = -1.0f * DEG_TO_RAD;
+//             }
+//             else if(received_position_value < -60.0f * DEG_TO_RAD){
+//                 delta = 1.0f * DEG_TO_RAD;
+//             }
+//             xSemaphoreGive(tx_sem);
+//             vTaskDelay(pdMS_TO_TICKS(10));
             
-        }
-        else{
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
+//         }
+//         else{
+//             vTaskDelay(pdMS_TO_TICKS(1000));
+//         }
         
-    }
-}
+//     }
+// }
+
 static void BacktoCANBootloader()
 {
     const esp_partition_t *running = esp_ota_get_running_partition();
