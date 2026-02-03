@@ -146,7 +146,13 @@ static void twai_receive_task(void *arg)
 
             xSemaphoreTake(tx_sem, portMAX_DELAY);
             LoopMode mode = static_cast<LoopMode>(rx_message.data[0]);
-            if((mode < FUNCTION_MODE_DEFAULT || mode > FUNCTION_MODE_DEMO) && mode != BOOTLOADER_TRIGGER){
+            if(mode == BOOTLOADER_TRIGGER){
+                bootloader_triggered = true;
+                xSemaphoreGive(tx_sem);
+                continue;
+            }
+
+            if(mode < FUNCTION_MODE_DEFAULT || mode > FUNCTION_MODE_DEMO){
                 printf("Received invalid mode %d, ignoring...\n", mode);
                 xSemaphoreGive(tx_sem);
                 continue;
@@ -161,9 +167,9 @@ static void twai_receive_task(void *arg)
             }else{
                 motorHaptic.function_demo_enabled = false;
             }
-            if(current_mode == BOOTLOADER_TRIGGER){
-                bootloader_triggered = true;
-            }
+            // if(current_mode == BOOTLOADER_TRIGGER){
+            //     bootloader_triggered = true;
+            // }
             xSemaphoreGive(tx_sem);
 
             xSemaphoreTake(rx_sem, portMAX_DELAY);
@@ -254,6 +260,19 @@ static void BacktoCANBootloader()
     esp_restart();
 }
 
+static void check_bootloader_trigger_task(void *arg){
+
+    while(1){
+        xSemaphoreTake(tx_sem, portMAX_DELAY);
+        if(bootloader_triggered){
+            printf("Bootloader triggered! Restarting to bootloader...\n");
+            BacktoCANBootloader();
+        }
+        xSemaphoreGive(tx_sem);
+        vTaskDelay(pdMS_TO_TICKS(500));        
+    }
+}
+
 extern "C" void app_main() {
 
     rx_sem = xSemaphoreCreateBinary();
@@ -272,6 +291,7 @@ extern "C" void app_main() {
 
     xTaskCreatePinnedToCore(twai_transmit_task, "TWAI_tx", 4096, NULL, 8, NULL, 1);
     xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, 8, NULL, 1);
+    xTaskCreatePinnedToCore(check_bootloader_trigger_task, "Check_BL_Trigger", 4096, NULL, 4, NULL, 1);
 
     //xTaskCreatePinnedToCore(demo_function_selftest, "Demo Function Selftest", 4096, NULL, 8, NULL, 1);
 
@@ -291,33 +311,49 @@ extern "C" void app_main() {
     motorHaptic.init();
 
     while (1) {
-        if(bootloader_triggered){
-            printf("Bootloader triggered! Restarting to bootloader...\n");
-            BacktoCANBootloader();
-        }
+        // if(bootloader_triggered){
+        //     printf("Bootloader triggered! Restarting to bootloader...\n");
+        //     BacktoCANBootloader();
+        // }
         motorHaptic.setLoopMode(current_mode);
         printf("Set loop mode to %d\n", current_mode);
 
         motorHaptic.calibrate();
-        motorHaptic.setup();
-        while(1) {
-            xSemaphoreTake(tx_sem, portMAX_DELAY);
-            motorHaptic.TargetPositionDemo = received_position_value;
-            xSemaphoreGive(tx_sem);
-            
-            motorHaptic.loop();
-
-            xSemaphoreTake(rx_sem, portMAX_DELAY); 
-            position_value = motorHaptic.getPosition();
-            xSemaphoreGive(rx_sem);
-
-            xSemaphoreTake(tx_sem, portMAX_DELAY);
-            if(change_mode_requested){
-                change_mode_requested = false;
+        if(motorHaptic.getMotorState() == HAPTIC_MOTOR_ERROR){
+            printf("Calibration failed! Motor in error state. Retrying...\n");
+            while(1){
+                xSemaphoreTake(tx_sem, portMAX_DELAY);
+                if(change_mode_requested){
+                    change_mode_requested = false;
+                    xSemaphoreGive(tx_sem);
+                    break;
+                }
                 xSemaphoreGive(tx_sem);
-                break;
+                vTaskDelay(pdMS_TO_TICKS(500));
             }
-            xSemaphoreGive(tx_sem);
+        }else{
+            printf("Calibration successful! Motor ready.\n");
+            motorHaptic.setup();
+            while(1) {
+                xSemaphoreTake(tx_sem, portMAX_DELAY);
+                motorHaptic.TargetPositionDemo = received_position_value;
+                xSemaphoreGive(tx_sem);
+            
+                motorHaptic.loop();
+
+                xSemaphoreTake(rx_sem, portMAX_DELAY); 
+                position_value = motorHaptic.getPosition();
+                xSemaphoreGive(rx_sem);
+
+                xSemaphoreTake(tx_sem, portMAX_DELAY);
+                if(change_mode_requested){
+                    change_mode_requested = false;
+                    xSemaphoreGive(tx_sem);
+                    break;
+                }
+                xSemaphoreGive(tx_sem);
+                // vTaskDelay(pdMS_TO_TICKS(10));
+            }
         }
     }
 }

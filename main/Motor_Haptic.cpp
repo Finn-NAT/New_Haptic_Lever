@@ -58,11 +58,15 @@ void MotorHaptic::calibrate() {
 
   motor.controller = MotionControlType::torque;
 
+  uint64_t timeout_counter = esp_timer_get_time();
+  bool run_right = false;
+  bool run_left = false;
+  
   while(1){
     float old_angle = motor.shaft_angle;
 
 	  motor.loopFOC();
-	  while(1){
+	  while(timeout_counter + 10000000 > esp_timer_get_time()){
 	    for(int i = 0 ; i < 40; i++){
 		  motor.loopFOC();
 		  motor.move(haptic_torque);
@@ -72,6 +76,7 @@ void MotorHaptic::calibrate() {
 		    count++;
 		    if(count > 20){
 		      max_position = motor.shaft_angle;
+          run_right = true;
 		      break;
 		    }else{
           vec_tb += fabs(motor.shaft_velocity);
@@ -83,7 +88,7 @@ void MotorHaptic::calibrate() {
     count = 0;
     motor.move(0);
 
-	  while(1){
+	  while(timeout_counter + 10000000 > esp_timer_get_time()){
 	    for(int i = 0 ; i < 40; i++){
 		  motor.loopFOC();
 		  motor.move(-haptic_torque);
@@ -94,6 +99,7 @@ void MotorHaptic::calibrate() {
         //printf("Count for min: %d\n", count);
 		    if(count > 20){
 		      min_position = motor.shaft_angle;
+          run_left = true;
 		      break;
 		    }
 	    }else{
@@ -106,7 +112,12 @@ void MotorHaptic::calibrate() {
     count = 0;
     motor.move(0);
 
-	  home_angle = (max_position + min_position)/2;
+    home_angle = (max_position + min_position)/2;
+
+    if(!run_right || !run_left || (max_position - min_position) == 0){
+      setMotorState(HAPTIC_MOTOR_ERROR); 
+      return; 
+    }
 
     vec_tb /= count_vec;
     printf("Calibration done. vec_tb: %.2f - %ld\n", vec_tb, count_vec);
@@ -200,13 +211,13 @@ void MotorHaptic::calibrate() {
             break;
         }
 	    delay(1);
-	}  
-
+	}
+  setMotorState(HAPTIC_MOTOR_READY);
+  return;  
 
 }
 
 void MotorHaptic::setup(){
-    setMotorState(HAPTIC_MOTOR_READY);
     (this->*setup_function_ptr)();
 }
 
