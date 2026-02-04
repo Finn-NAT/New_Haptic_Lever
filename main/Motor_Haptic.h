@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <cmath>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -23,10 +24,10 @@
 #define DRIVER_VOLTAGE_POWER_SUPPLY  20
 
 #define FOC_VOLTAGE_LIMIT 20
-#define FOC_PID_P_DEFAULT 950
-#define FOC_PID_I_DEFAULT 0.001
-#define FOC_PID_D_DEFAULT 1.0
-#define FOC_PID_PV_DEFAULT 0.8
+#define FOC_PID_P_DEFAULT 500
+#define FOC_PID_I_DEFAULT 0.03
+#define FOC_PID_D_DEFAULT 0.1
+#define FOC_PID_PV_DEFAULT 0.7
 #define FOC_PID_IV_DEFAULT 0.1
 #define FOC_LOW_PASS_FILTER_VELOCITY 0.05
 #define FOC_PID_VELOCITY_LIMIT 30
@@ -40,7 +41,7 @@
 #define CALIB_PD_I_VALUE 0.1f  
 #define CALIB_TORQUE_VALUE 6.0f
 
-#define HAPTIC_OUT_ANGLE_DEFAULT (1.8f * PI / 180.0)
+#define HAPTIC_OUT_ANGLE_DEFAULT (2.5f * PI / 180.0)
 #define HAPTIC_IN_ANGLE_DEFAULT  (0.25f * PI / 180.0)
 
 /* ----------------------------------------------------- */
@@ -58,6 +59,8 @@
 
 /* USER DEFINE LINE END -------------------------------- */
 
+#define AZIPOD_VERSION  1
+
 typedef struct motor_info {
     int phA;
     int phB;
@@ -68,13 +71,17 @@ typedef struct motor_info {
 
 // Loop mode enumeration
 enum LoopMode {
+#ifdef AZIPOD_VERSION
+    FUNCTION_AZI_MODE_1 = -1,
+#endif  
+
+    FUNCTION_MODE_DEFAULT = 0,  // Basic haptic mode
+
     FUNCTION_MODE_1 = 1,  // Haptic with 12 detents
     FUNCTION_MODE_2 = 2,  // Boundaries Haptic
     FUNCTION_MODE_3 = 3,  // Haptic with 6 detents + boundaries
     FUNCTION_MODE_4 = 4,  // Haptic with 12 detents + boundaries + vibration
-    FUNCTION_MODE_DEFAULT = 0,  // Basic haptic mode
-
-    FUNCTION_MODE_DEMO = 5  // Function demo mode,
+    FUNCTION_MODE_5 = 5   // Function demo mode,
 };
 
 enum HapticMotorState {
@@ -110,6 +117,8 @@ public:
     void setupF3();
     void setupF4();
 
+    void setupAF1();
+
     void setupDemo();
 
     // Different loop implementations
@@ -118,6 +127,8 @@ public:
     void loopF2();  // Boundaries Haptic
     void loopF3();  // Haptic with 6 detents + boundaries
     void loopF4();  // Haptic with 12 detents + boundaries + vibration
+
+    void loopAF1();
 
     void loopDemo();
 

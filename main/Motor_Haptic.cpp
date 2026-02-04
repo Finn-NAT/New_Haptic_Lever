@@ -43,6 +43,7 @@ void MotorHaptic::init() {
     printf("MotorHaptic initialized successfully: (zero_electric_angle = %.8f)\n", motor.zero_electric_angle);
 }
 
+#ifndef AZIPOD_VERSION
 // Calibration routine
 void MotorHaptic::calibrate() {
   // motor.loopFOC();
@@ -88,7 +89,7 @@ void MotorHaptic::calibrate() {
     count = 0;
     motor.move(0);
 
-	  while(timeout_counter + 10000000 > esp_timer_get_time()){
+	  while(timeout_counter + 20000000 > esp_timer_get_time()){
 	    for(int i = 0 ; i < 40; i++){
 		  motor.loopFOC();
 		  motor.move(-haptic_torque);
@@ -115,6 +116,7 @@ void MotorHaptic::calibrate() {
     home_angle = (max_position + min_position)/2;
 
     if(!run_right || !run_left || (max_position - min_position) == 0){
+      motor.loopFOC();
       setMotorState(HAPTIC_MOTOR_ERROR); 
       return; 
     }
@@ -216,6 +218,17 @@ void MotorHaptic::calibrate() {
   return;  
 
 }
+#else
+void MotorHaptic::calibrate() {
+    motor.loopFOC();
+    home_angle = motor.shaft_angle;
+    max_position = home_angle + (60.0f * DEG_TO_RAD);
+    min_position = home_angle - (60.0f * DEG_TO_RAD);
+
+    setMotorState(HAPTIC_MOTOR_READY);
+    return;  
+}
+#endif
 
 void MotorHaptic::setup(){
     (this->*setup_function_ptr)();
@@ -236,6 +249,12 @@ void MotorHaptic::setLoopMode(LoopMode mode) {
     current_function_mode = mode;
     
     switch(mode) {
+#ifdef AZIPOD_VERSION
+        case FUNCTION_AZI_MODE_1:
+            loop_function_ptr = &MotorHaptic::loopAF1;
+            setup_function_ptr = &MotorHaptic::setupAF1;
+            break;
+#endif
         case FUNCTION_MODE_1:
             loop_function_ptr = &MotorHaptic::loopF1;
             setup_function_ptr = &MotorHaptic::setupF1;
@@ -252,7 +271,7 @@ void MotorHaptic::setLoopMode(LoopMode mode) {
             loop_function_ptr = &MotorHaptic::loopF4;
             setup_function_ptr = &MotorHaptic::setupF4;
             break;
-        case FUNCTION_MODE_DEMO:
+        case FUNCTION_MODE_5:
             loop_function_ptr = &MotorHaptic::loopDemo;
             setup_function_ptr = &MotorHaptic::setupDemo;
             break;

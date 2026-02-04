@@ -22,7 +22,7 @@
 
 #include "Motor_Haptic.h"
 
-motor_info_t motor_info = {32, 33, 25, 11, FOC_ZERO_ELECTRIC_ANGLE};
+motor_info_t motor_info = {25, 33, 32, 11, FOC_ZERO_ELECTRIC_ANGLE};
 MotorHaptic motorHaptic(motor_info, PIN_SPI_CS);
 
 #define UPDATED_LEVER_ID        0x01111110
@@ -43,7 +43,7 @@ static float position_value = 0.0f;
 static float received_position_value = 0.0f;
 
 static bool change_mode_requested = false;
-static LoopMode current_mode = FUNCTION_MODE_DEFAULT;
+static LoopMode current_mode = FUNCTION_AZI_MODE_1;
 
 #define BOOTLOADER_TRIGGER   255
 static bool bootloader_triggered = false;
@@ -101,7 +101,7 @@ static void twai_transmit_task(void *arg)
                 // Gửi thành công
             } else if (result == ESP_ERR_INVALID_STATE) {
                 // Driver bị bus-off hoặc stopped, thử recover
-                ESP_LOGW(EXAMPLE_TAG, "TWAI in invalid state");
+                // ESP_LOGW(EXAMPLE_TAG, "TWAI in invalid state");
             } else if (result == ESP_ERR_TIMEOUT) {
                 // TX queue đầy, bỏ qua
                 ESP_LOGW(EXAMPLE_TAG, "TWAI TX timeout");
@@ -151,8 +151,11 @@ static void twai_receive_task(void *arg)
                 xSemaphoreGive(tx_sem);
                 continue;
             }
-
-            if(mode < FUNCTION_MODE_DEFAULT || mode > FUNCTION_MODE_DEMO){
+#ifndef AZIPOD_VERSION
+            if(mode < FUNCTION_MODE_DEFAULT || mode > FUNCTION_MODE_5){
+#else
+            if(mode < FUNCTION_AZI_MODE_1 || mode > FUNCTION_MODE_5){
+#endif
                 printf("Received invalid mode %d, ignoring...\n", mode);
                 xSemaphoreGive(tx_sem);
                 continue;
@@ -162,7 +165,7 @@ static void twai_receive_task(void *arg)
                 current_mode = mode;
                 printf("Requested mode change to %d\n", current_mode);
             }
-            if(current_mode == FUNCTION_MODE_DEMO){
+            if(current_mode == FUNCTION_MODE_5){
                 motorHaptic.function_demo_enabled = true;
             }else{
                 motorHaptic.function_demo_enabled = false;
