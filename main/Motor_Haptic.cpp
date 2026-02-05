@@ -58,12 +58,12 @@ void MotorHaptic::calibrate() {
 
   motor.controller = MotionControlType::torque;
 
-  uint64_t timeout_counter = esp_timer_get_time();
   bool run_right = false;
   bool run_left = false;
   
   while(1){
     float old_angle = motor.shaft_angle;
+    uint64_t timeout_counter = esp_timer_get_time();
 
 	  motor.loopFOC();
 	  while(timeout_counter + 10000000 > esp_timer_get_time()){
@@ -88,7 +88,7 @@ void MotorHaptic::calibrate() {
     count = 0;
     motor.move(0);
 
-	  while(timeout_counter + 10000000 > esp_timer_get_time()){
+	  while(timeout_counter + 20000000 > esp_timer_get_time()){
 	    for(int i = 0 ; i < 40; i++){
 		  motor.loopFOC();
 		  motor.move(-haptic_torque);

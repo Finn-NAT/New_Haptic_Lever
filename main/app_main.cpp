@@ -22,7 +22,7 @@
 
 #include "Motor_Haptic.h"
 
-motor_info_t motor_info = {32, 33, 25, 11, FOC_ZERO_ELECTRIC_ANGLE};
+motor_info_t motor_info = {25, 33, 32, 11, FOC_ZERO_ELECTRIC_ANGLE};
 MotorHaptic motorHaptic(motor_info, PIN_SPI_CS);
 
 #define UPDATED_LEVER_ID        0x01111110

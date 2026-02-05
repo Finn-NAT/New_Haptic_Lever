@@ -31,8 +31,8 @@ void MotorHaptic::setupF1() {
     list_haptics[11] = list_haptics[9] - PI/18;
 
     motor.P_angle.P = haptic_default_pid_p;
-    motor.P_angle.D = haptic_default_pid_i;
-    motor.P_angle.I = haptic_default_pid_d;
+    motor.P_angle.D = haptic_default_pid_d;
+    motor.P_angle.I = haptic_default_pid_i;
 
     motor.controller = MotionControlType::torque;
 }
