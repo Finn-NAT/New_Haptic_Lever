@@ -16,8 +16,8 @@ void MotorHaptic::setupF0() {
     using namespace FunctionF0;
 
     motor.P_angle.P = haptic_default_pid_p;
-    motor.P_angle.D = haptic_default_pid_i;
-    motor.P_angle.I = haptic_default_pid_d;
+    motor.P_angle.D = haptic_default_pid_d;  // D cho damping
+    motor.P_angle.I = haptic_default_pid_i;  // I cho steady-state
     motor.controller = MotionControlType::torque;
     
     printf("LoopDefault initialized with basic haptic mode\n");

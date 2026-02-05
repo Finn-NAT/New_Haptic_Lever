@@ -33,8 +33,8 @@ void MotorHaptic::setupF3() {
     min_position_haptic = list_haptics[7] - PI/18;
 
     motor.P_angle.P = haptic_default_pid_p;
-    motor.P_angle.D = haptic_default_pid_i;
-    motor.P_angle.I = haptic_default_pid_d;
+    motor.P_angle.D = haptic_default_pid_d;  // D cho damping
+    motor.P_angle.I = haptic_default_pid_i;  // I cho steady-state
     // motor.P_angle.reset();
     // motor.PID_velocity.reset(); 
     motor.controller = MotionControlType::torque;

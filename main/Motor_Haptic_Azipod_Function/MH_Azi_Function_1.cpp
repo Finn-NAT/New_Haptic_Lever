@@ -10,15 +10,15 @@ namespace FunctionAF1 {
     float angle_dead_zone = MAIN_ANGLE_STEP;
 
     float degree_90 = 90.0f * DEG_TO_RAD;
-    float degree_10 = 10.0f * DEG_TO_RAD;
+    float degree_6 = 6.0f * DEG_TO_RAD;
 }
 
 void MotorHaptic::setupAF1() {
     using namespace FunctionAF1;
 
     motor.P_angle.P = haptic_default_pid_p;
-    motor.P_angle.D = haptic_default_pid_i;
-    motor.P_angle.I = haptic_default_pid_d;
+    motor.P_angle.D = haptic_default_pid_d;
+    motor.P_angle.I = haptic_default_pid_i;
     // motor.P_angle.reset();
     // motor.PID_velocity.reset(); 
     motor.controller = MotionControlType::angle;
@@ -32,7 +32,7 @@ void MotorHaptic::loopAF1() {
     motor.loopFOC();
     float error = home_angle - motor.shaft_angle;
     float main_point_haptic = round(error/degree_90)*degree_90;
-    float sub_point_haptic = round(error/degree_10)*degree_10;
+    float sub_point_haptic = round(error/degree_6)*degree_6;
     //printf("Error: %f deg, Main point: %f deg\n", error*RAD_TO_DEG, main_point_haptic*RAD_TO_DEG);
     if (fabs(error-main_point_haptic) < angle_dead_zone) {
         angle_dead_zone = MAIN_ANGLE_STEP;

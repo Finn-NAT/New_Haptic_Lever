@@ -24,11 +24,18 @@ void MotorHaptic::init() {
     motor.linkDriver(&driver);
     motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
     motor.controller = MotionControlType::torque;
+    // Velocity PID (vòng trong)
     motor.PID_velocity.P = FOC_PID_PV_DEFAULT;  
     motor.PID_velocity.I = FOC_PID_IV_DEFAULT;
+    motor.PID_velocity.D = 0.0f;
+    motor.PID_velocity.output_ramp = 1000;  // Ramp output để mượt hơn
+    
+    // Angle PID (vòng ngoài) 
     motor.P_angle.P = FOC_PID_P_DEFAULT;
-    motor.P_angle.D = FOC_PID_I_DEFAULT;
-    motor.P_angle.I = FOC_PID_D_DEFAULT;
+    motor.P_angle.D = FOC_PID_D_DEFAULT;     
+    motor.P_angle.I = FOC_PID_I_DEFAULT;     
+    // motor.P_angle.output_ramp = 10000;       
+    
     motor.voltage_limit = FOC_VOLTAGE_LIMIT;
     motor.LPF_velocity.Tf = FOC_LOW_PASS_FILTER_VELOCITY;
     motor.velocity_limit = FOC_PID_VELOCITY_LIMIT;

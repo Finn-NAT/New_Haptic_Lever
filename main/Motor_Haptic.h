@@ -24,12 +24,12 @@
 #define DRIVER_VOLTAGE_POWER_SUPPLY  20
 
 #define FOC_VOLTAGE_LIMIT 20
-#define FOC_PID_P_DEFAULT 500
-#define FOC_PID_I_DEFAULT 0.03
-#define FOC_PID_D_DEFAULT 0.1
-#define FOC_PID_PV_DEFAULT 0.7
-#define FOC_PID_IV_DEFAULT 0.1
-#define FOC_LOW_PASS_FILTER_VELOCITY 0.05
+#define FOC_PID_P_DEFAULT 310         
+#define FOC_PID_D_DEFAULT 0.05         // D thấp (derivative của góc)
+#define FOC_PID_I_DEFAULT 0.005       // I thấp
+#define FOC_PID_PV_DEFAULT 0.65        
+#define FOC_PID_IV_DEFAULT 0.03        
+#define FOC_LOW_PASS_FILTER_VELOCITY 0.08f
 #define FOC_PID_VELOCITY_LIMIT 30
 #define FOC_VOLTAGE_SENSOR_ALIGN 7
 #define FOC_SENSOR_DIRCTION  Direction::CCW
@@ -46,8 +46,8 @@
 
 /* ----------------------------------------------------- */
 
-#define SUB_FOC_PID_P        400
-#define SUB_ANGLE_STEP       (0.55f * PI / 180.0f)
+#define SUB_FOC_PID_P        150
+#define SUB_ANGLE_STEP       (0.75f * PI / 180.0f)
 
 #define MAIN_ANGLE_STEP      HAPTIC_OUT_ANGLE_DEFAULT
 #define MAIN_FORCE           19.0f

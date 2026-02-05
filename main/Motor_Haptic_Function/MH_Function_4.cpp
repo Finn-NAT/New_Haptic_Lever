@@ -44,8 +44,8 @@ void MotorHaptic::setupF4() {
     min_position_haptic = list_haptics[7] - PI/18;
 
     motor.P_angle.P = haptic_calib_p;
-    motor.P_angle.D = haptic_calib_i;
-    motor.P_angle.I = haptic_calib_d;
+    motor.P_angle.D = haptic_calib_d;  // D cho damping
+    motor.P_angle.I = haptic_calib_i;  // I cho steady-state
     // motor.P_angle.reset();
     // motor.PID_velocity.reset(); 
     motor.controller = MotionControlType::angle;
