@@ -228,10 +228,32 @@ void MotorHaptic::calibrate() {
 #else
 void MotorHaptic::calibrate() {
     motor.loopFOC();
-    home_angle = motor.shaft_angle;
-    max_position = home_angle + (60.0f * DEG_TO_RAD);
-    min_position = home_angle - (60.0f * DEG_TO_RAD);
+    home_angle = 45.0f * DEG_TO_RAD;
+    int count = 0;
 
+    motor.P_angle.P = haptic_calib_p;
+    motor.P_angle.D = haptic_calib_d;
+    motor.P_angle.I = haptic_calib_i;
+
+    motor.P_angle.reset();
+    motor.PID_velocity.reset();
+
+	  while(1){
+	    motor.loopFOC();
+	    float error =  motor.shaft_angle - home_angle;
+	    float shaft_velocity_sp = motor.P_angle(home_angle - motor.shaft_angle );
+        shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
+        float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
+        current_sp = _constrain(current_sp,-haptic_torque,haptic_torque);
+        motor.move(current_sp);
+	    if(fabs(error*RAD_TO_DEG) < 0.25){count++;}
+	    if(count > 50) {
+            motor.P_angle.reset();
+            motor.PID_velocity.reset();
+            break;
+        }
+	    delay(1);
+	  }
     setMotorState(HAPTIC_MOTOR_READY);
     return;  
 }
