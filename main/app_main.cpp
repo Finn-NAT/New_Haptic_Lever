@@ -21,15 +21,27 @@
 #include "esp_ota_ops.h"
 
 #include "Motor_Haptic.h"
+#include "utils.h"
 
 motor_info_t motor_info = {25, 33, 32, 11, FOC_ZERO_ELECTRIC_ANGLE};
 MotorHaptic motorHaptic(motor_info, PIN_SPI_CS);
 
-#define UPDATED_LEVER_ID        0x01111110
-#define COMMAND_LEVER_ID        0x01111111
+// TWAI (CAN bus) definitions------------------------
+// ID for left lever updates and commands
+#define UPDATED_LEFT_LEVER_ID        0x01000000
+#define COMMAND_LEFT_LEVER_ID        0x01000001
+// ID for right lever updates and commands
+#define UPDATED_RIGHT_LEVER_ID       0x02000000
+#define COMMAND_RIGHT_LEVER_ID       0x02000001
+// ID for azipod updates and commands
+#define UPDATED_AZIPOD_ID            0x03000000
+#define COMMAND_AZIPOD_ID            0x03000001
+//---------------------------------------------------
 
 #define TX_GPIO_NUM             (gpio_num_t)13
 #define RX_GPIO_NUM             (gpio_num_t)15
+#define ADC_PIN                 (gpio_num_t)36
+
 #define EXAMPLE_TAG             "LEVER"
 
 static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
@@ -43,32 +55,18 @@ static float position_value = 0.0f;
 static float received_position_value = 0.0f;
 
 static bool change_mode_requested = false;
-static LoopMode current_mode = FUNCTION_AZI_MODE_1;
+static LoopMode current_mode = FUNCTION_MODE_DEFAULT;
+static LeverType current_lever_type = LEFT_LEVER;
+static uint32_t update_id = UPDATED_LEFT_LEVER_ID;
+static uint32_t command_id = COMMAND_LEFT_LEVER_ID; 
 
-#define BOOTLOADER_TRIGGER   255
+#define BOOTLOADER_TRIGGER_BYTE_1   0xFF
+#define BOOTLOADER_TRIGGER_BYTE_2   0x05
+#define BOOTLOADER_TRIGGER_BYTE_3   0xFF
+#define BOOTLOADER_TRIGGER_BYTE_4   0x50
 static bool bootloader_triggered = false;
 
 /* --------------------------- Tasks and Functions -------------------------- */
-
-// Chuyển 1 float thành 4 bytes (little-endian)
-void float_to_bytes(float value, uint8_t* bytes) {
-    union {
-        float f;
-        uint8_t b[4];
-    } data;
-    data.f = value;
-    memcpy(bytes, data.b, 4);
-}
-
-// Chuyển 4 bytes thành 1 float (little-endian)
-float bytes_to_float(const uint8_t* bytes) {
-    union {
-        float f;
-        uint8_t b[4];
-    } data;
-    memcpy(data.b, bytes, 4);
-    return data.f;
-}
 
 static void twai_transmit_task(void *arg)
 {
@@ -80,7 +78,7 @@ static void twai_transmit_task(void *arg)
         .self = 0,              // Normal transmission (not loopback)
         .dlc_non_comp = 0,      // DLC is less than 8
         // Message ID and payload
-        .identifier = UPDATED_LEVER_ID,
+        .identifier = update_id,
         .data_length_code = 8,
         .data = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
     };
@@ -141,25 +139,35 @@ static void twai_receive_task(void *arg)
         }
         
         //ESP_LOGI(EXAMPLE_TAG, "Msg received\tID 0x%lx\tData = %d", rx_message.identifier, rx_message.data[0]);
-        if (rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == COMMAND_LEVER_ID) {   
+        if (rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == command_id) {   
             printf("Processing received message...\n");
 
             xSemaphoreTake(tx_sem, portMAX_DELAY);
-            LoopMode mode = static_cast<LoopMode>(rx_message.data[0]);
-            if(mode == BOOTLOADER_TRIGGER){
+            if(rx_message.data[0] == BOOTLOADER_TRIGGER_BYTE_1 &&
+               rx_message.data[1] == BOOTLOADER_TRIGGER_BYTE_2 &&
+               rx_message.data[2] == BOOTLOADER_TRIGGER_BYTE_3 &&
+               rx_message.data[3] == BOOTLOADER_TRIGGER_BYTE_4){
                 bootloader_triggered = true;
                 xSemaphoreGive(tx_sem);
                 continue;
             }
-#ifndef AZIPOD_VERSION
-            if(mode < FUNCTION_MODE_DEFAULT || mode > FUNCTION_MODE_5){
-#else
-            if(mode < FUNCTION_AZI_MODE_1 || mode > FUNCTION_MODE_5){
-#endif
-                printf("Received invalid mode %d, ignoring...\n", mode);
-                xSemaphoreGive(tx_sem);
-                continue;
+            uint8_t raw = rx_message.data[0];
+            int8_t signed_raw = static_cast<int8_t>(raw);
+            LoopMode mode = static_cast<LoopMode>(signed_raw);
+            if(current_lever_type == AZIPOD){
+                if(mode < FUNCTION_AZI_MODE_1 || mode > FUNCTION_MODE_DEFAULT){
+                    printf("Received invalid mode %d, ignoring...\n", mode);
+                    xSemaphoreGive(tx_sem);
+                    continue;
+                }
+            }else{
+                if(mode < FUNCTION_MODE_DEFAULT || mode > FUNCTION_MODE_4){
+                    printf("Received invalid mode %d, ignoring...\n", mode);
+                    xSemaphoreGive(tx_sem);
+                    continue;
+                }
             }
+
             if(current_mode != mode){
                 change_mode_requested = true;
                 current_mode = mode;
@@ -170,9 +178,6 @@ static void twai_receive_task(void *arg)
             }else{
                 motorHaptic.function_demo_enabled = false;
             }
-            // if(current_mode == BOOTLOADER_TRIGGER){
-            //     bootloader_triggered = true;
-            // }
             xSemaphoreGive(tx_sem);
 
             xSemaphoreTake(rx_sem, portMAX_DELAY);
@@ -185,7 +190,7 @@ static void twai_receive_task(void *arg)
             }
             
             xSemaphoreGive(rx_sem);
-        }else if(rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == UPDATED_LEVER_ID && motorHaptic.function_demo_enabled){   
+        }else if(rx_message.extd && rx_message.data_length_code == 8 && rx_message.identifier == update_id && motorHaptic.function_demo_enabled){   
             //printf("Processing received message for position update...\n");
             xSemaphoreTake(tx_sem, portMAX_DELAY);
             received_position_value = bytes_to_float(&rx_message.data[0]);
@@ -292,10 +297,6 @@ extern "C" void app_main() {
     ESP_LOGI(EXAMPLE_TAG, "Driver started");
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-    xTaskCreatePinnedToCore(twai_transmit_task, "TWAI_tx", 4096, NULL, 8, NULL, 1);
-    xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, 8, NULL, 1);
-    xTaskCreatePinnedToCore(check_bootloader_trigger_task, "Check_BL_Trigger", 4096, NULL, 4, NULL, 1);
-
     //xTaskCreatePinnedToCore(demo_function_selftest, "Demo Function Selftest", 4096, NULL, 8, NULL, 1);
 
     // Tắt watchdog cho task này
@@ -311,7 +312,38 @@ extern "C" void app_main() {
   
   
     initArduino();
-    motorHaptic.init();
+    
+    pinMode(ADC_PIN, INPUT);
+    int adc_value = 0;
+    for (int i = 0; i < 30; i++) {
+        adc_value += analogReadMilliVolts(ADC_PIN);
+        // printf("ADC Read %d: %d\n", i + 1, adc_value);
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    adc_value /= 30;
+    printf("Average ADC Value: %d mV\n", adc_value);
+    if(adc_value < 1100){
+        current_lever_type = LEFT_LEVER;
+        update_id = UPDATED_LEFT_LEVER_ID;
+        command_id = COMMAND_LEFT_LEVER_ID;
+    }else if(adc_value > 2200){
+        current_lever_type = RIGHT_LEVER;
+        update_id = UPDATED_RIGHT_LEVER_ID;
+        command_id = COMMAND_RIGHT_LEVER_ID;
+    }else{
+        current_lever_type = AZIPOD;
+        update_id = UPDATED_AZIPOD_ID;
+        command_id = COMMAND_AZIPOD_ID;
+    }
+    printf("Detected lever type: %d\n", current_lever_type);
+
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    xTaskCreatePinnedToCore(twai_transmit_task, "TWAI_tx", 4096, NULL, 8, NULL, 1);
+    xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, 8, NULL, 1);
+    xTaskCreatePinnedToCore(check_bootloader_trigger_task, "Check_BL_Trigger", 4096, NULL, 4, NULL, 1);
+    
+    motorHaptic.init(current_lever_type);
 
     while (1) {
         // if(bootloader_triggered){
@@ -321,7 +353,7 @@ extern "C" void app_main() {
         motorHaptic.setLoopMode(current_mode);
         printf("Set loop mode to %d\n", current_mode);
 
-        motorHaptic.calibrate();
+        motorHaptic.calibrate(current_lever_type);
         if(motorHaptic.getMotorState() == HAPTIC_MOTOR_ERROR){
             printf("Calibration failed! Motor in error state. Retrying...\n");
             while(1){

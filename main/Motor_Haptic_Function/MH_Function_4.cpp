@@ -5,16 +5,15 @@
    ============================================================================ */
 
 #define F4_MAX_HAPTICS          12
-
-#define DELTA_MAX_MIN_ZONE 1.5f * PI / 180.0f
-#define MAX_MIN_FORCE 4.5f
+#define F4_DELTA_MAX_MIN_ZONE 1.5f * PI / 180.0f
+#define F4_MAX_MIN_FORCE 4.5f
 
 // Static variables for Function4
 namespace FunctionF4 {
     float list_haptics[F4_MAX_HAPTICS];
     int current_haptic_index = F4_MAX_HAPTICS+1;
     bool one_time = false;
-    float angle_dead_zone = MAIN_ANGLE_STEP;
+    float angle_dead_zone = 0.0f;
 
     float max_position_haptic = 0;
     float min_position_haptic = 0;
@@ -26,6 +25,8 @@ namespace FunctionF4 {
 
 void MotorHaptic::setupF4() {
     using namespace FunctionF4;
+
+    angle_dead_zone = main_angle_step;
 
     list_haptics[0] = home_angle + PI/18;
     list_haptics[1] = home_angle - PI/18;
@@ -44,8 +45,8 @@ void MotorHaptic::setupF4() {
     min_position_haptic = list_haptics[7] - PI/18;
 
     motor.P_angle.P = haptic_calib_p;
-    motor.P_angle.D = haptic_calib_d;  // D cho damping
-    motor.P_angle.I = haptic_calib_i;  // I cho steady-state
+    motor.P_angle.D = haptic_calib_d;  
+    motor.P_angle.I = haptic_calib_i;  
     // motor.P_angle.reset();
     // motor.PID_velocity.reset(); 
     motor.controller = MotionControlType::angle;
@@ -61,8 +62,8 @@ void MotorHaptic::loopF4() {
     if (fabs(error) < angle_dead_zone) {
         if(one_time) {
             angle_dead_zone = fabs(motor.shaft_velocity)/40.0f;
-            if(angle_dead_zone < MAIN_ANGLE_STEP) {
-                angle_dead_zone = MAIN_ANGLE_STEP;
+            if(angle_dead_zone < main_angle_step) {
+                angle_dead_zone = main_angle_step;
             }
             if(error > 0) {
                 motor.move(MAIN_FORCE);
@@ -82,8 +83,8 @@ void MotorHaptic::loopF4() {
             motor.PID_velocity.reset();
             one_time = false;
         }
-        if(fabs(error) < MAIN_ANGLE_STEP/4 && fabs(motor.shaft_velocity) < 0.1f) {
-            angle_dead_zone = MAIN_ANGLE_STEP;
+        if(fabs(error) < main_angle_step/4 && fabs(motor.shaft_velocity) < 0.1f) {
+            angle_dead_zone = main_angle_step;
         }
 	    float shaft_velocity_sp = motor.P_angle(home_angle - motor.shaft_angle );
         shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
@@ -104,23 +105,23 @@ void MotorHaptic::loopF4() {
         current_sp = _constrain(current_sp,-OUT_FORCE,OUT_FORCE);
         motor.move(current_sp); 
 
-        if(fabs(motor.shaft_angle - max_position) < DELTA_MAX_MIN_ZONE){
+        if(fabs(motor.shaft_angle - max_position) < F4_DELTA_MAX_MIN_ZONE){
             max_count++;
             if(max_count > 3500){
-                motor.move(MAX_MIN_FORCE-3);
+                motor.move(F4_MAX_MIN_FORCE-3);
                 motor.loopFOC();
                 vTaskDelay(5);
-                motor.move(-MAX_MIN_FORCE);
+                motor.move(-F4_MAX_MIN_FORCE);
                 motor.loopFOC();
                 vTaskDelay(5);
             }
             if(max_count > 3700){
                 max_flag = false;
                 // for(int i = 0; i < 60; i++){
-                //     motor.move(-MAX_MIN_FORCE);
+                //     motor.move(-F4_MAX_MIN_FORCE);
                 //     motor.loopFOC();
                 //     vTaskDelay(20);
-                //     motor.move(MAX_MIN_FORCE);
+                //     motor.move(F4_MAX_MIN_FORCE);
                 //     motor.loopFOC();
                 //     vTaskDelay(20);
                 // }
@@ -143,23 +144,23 @@ void MotorHaptic::loopF4() {
         current_sp = _constrain(current_sp,-OUT_FORCE,OUT_FORCE); 
         motor.move(current_sp); 
 
-        if(fabs(motor.shaft_angle - min_position) < DELTA_MAX_MIN_ZONE){
+        if(fabs(motor.shaft_angle - min_position) < F4_DELTA_MAX_MIN_ZONE){
             min_count++;
             if(min_count > 3500){
-                motor.move(-MAX_MIN_FORCE+3);
+                motor.move(-F4_MAX_MIN_FORCE+3);
                 motor.loopFOC();
                 vTaskDelay(5);
-                motor.move(MAX_MIN_FORCE);
+                motor.move(F4_MAX_MIN_FORCE);
                 motor.loopFOC();
                 vTaskDelay(5);
             }
             if(min_count > 3700){
                 min_flag = false;
                 // for(int i = 0; i < 60; i++){
-                //     motor.move(-MAX_MIN_FORCE);
+                //     motor.move(-F4_MAX_MIN_FORCE);
                 //     motor.loopFOC();
                 //     vTaskDelay(20);
-                //     motor.move(MAX_MIN_FORCE);
+                //     motor.move(F4_MAX_MIN_FORCE);
                 //     motor.loopFOC();
                 //     vTaskDelay(20);
                 // }

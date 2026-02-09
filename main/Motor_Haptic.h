@@ -24,12 +24,22 @@
 #define DRIVER_VOLTAGE_POWER_SUPPLY  20
 
 #define FOC_VOLTAGE_LIMIT 20
-#define FOC_PID_P_DEFAULT 310         
-#define FOC_PID_D_DEFAULT 0.05         // D thấp (derivative của góc)
-#define FOC_PID_I_DEFAULT 0.005       // I thấp
-#define FOC_PID_PV_DEFAULT 0.65        
-#define FOC_PID_IV_DEFAULT 0.03        
-#define FOC_LOW_PASS_FILTER_VELOCITY 0.08f
+
+#define FOC_AZI_PID_P_DEFAULT 415         
+#define FOC_AZI_PID_D_DEFAULT 0.01        
+#define FOC_AZI_PID_I_DEFAULT 0.7       
+#define FOC_AZI_PID_PV_DEFAULT 0.54        
+#define FOC_AZI_PID_IV_DEFAULT 0.03
+//-------------------------------------
+//PID Values for Lever-----------------
+#define FOC_PID_P_DEFAULT 950
+#define FOC_PID_D_DEFAULT 0.01
+#define FOC_PID_I_DEFAULT 0.5
+#define FOC_PID_PV_DEFAULT 0.8
+#define FOC_PID_IV_DEFAULT 0.1
+//-------------------------------------
+
+#define FOC_LOW_PASS_FILTER_VELOCITY 0.09f
 #define FOC_PID_VELOCITY_LIMIT 30
 #define FOC_VOLTAGE_SENSOR_ALIGN 7
 #define FOC_SENSOR_DIRCTION  Direction::CCW
@@ -41,15 +51,24 @@
 #define CALIB_PD_I_VALUE 0.1f  
 #define CALIB_TORQUE_VALUE 5.6f
 
-#define HAPTIC_OUT_ANGLE_DEFAULT (2.5f * PI / 180.0)
+//Angle Value for Azipod Haptic Functions--------------
+#define HAPTIC_AZI_OUT_ANGLE_DEFAULT    (2.5f * PI / 180.0)
+//Angle Value for Lever Haptic Functions---------------
+#define HAPTIC_OUT_ANGLE_DEFAULT        (1.8f * PI / 180.0)
+//-----------------------------------------------------
+
 #define HAPTIC_IN_ANGLE_DEFAULT  (0.25f * PI / 180.0)
 
 /* ----------------------------------------------------- */
 
-#define SUB_FOC_PID_P        150
+//PID Values for Azipod----------------
+#define SUB_AZI_FOC_PID_P    200
+//-------------------------------------
+//PID Values for Lever-----------------
+#define SUB_FOC_PID_P        400
+//-------------------------------------
 #define SUB_ANGLE_STEP       (0.75f * PI / 180.0f)
 
-#define MAIN_ANGLE_STEP      HAPTIC_OUT_ANGLE_DEFAULT
 #define MAIN_FORCE           19.0f
 
 #define OUT_PID_P_VALUE 450.0f
@@ -58,8 +77,6 @@
 #define OUT_FORCE 7.0f 
 
 /* USER DEFINE LINE END -------------------------------- */
-
-#define AZIPOD_VERSION  1
 
 typedef struct motor_info {
     int phA;
@@ -71,9 +88,7 @@ typedef struct motor_info {
 
 // Loop mode enumeration
 enum LoopMode {
-#ifdef AZIPOD_VERSION
-    FUNCTION_AZI_MODE_1 = -1,
-#endif  
+    FUNCTION_AZI_MODE_1 = -1,   // Haptic with 4 main detents + 68 sub detents
 
     FUNCTION_MODE_DEFAULT = 0,  // Basic haptic mode
 
@@ -90,6 +105,12 @@ enum HapticMotorState {
     HAPTIC_MOTOR_READY = 2
 };
 
+enum LeverType {
+    LEFT_LEVER = -1,
+    AZIPOD = 0,
+    RIGHT_LEVER = 1
+};
+
 class MotorHaptic {
 public:
     // Constructor & Destructor
@@ -97,8 +118,12 @@ public:
     ~MotorHaptic();
 
     // Initialization and main loop
-    void init();
-    void calibrate();
+    void init(LeverType lever_type);
+    void calibrate(LeverType lever_type);
+
+    void Lever_Calibration_Routine();
+    void Azipod_Calibration_Routine();
+
     void setup();
     void loop();
     float getPosition();
@@ -171,6 +196,13 @@ private:
     float haptic_default_pid_p = FOC_PID_P_DEFAULT;
     float haptic_default_pid_i = FOC_PID_I_DEFAULT;
     float haptic_default_pid_d = FOC_PID_D_DEFAULT;
+
+    float haptic_velocity_pid_p = FOC_PID_PV_DEFAULT;
+    float haptic_velocity_pid_i = FOC_PID_IV_DEFAULT;
+
+    float haptic_sub_pid_p = SUB_FOC_PID_P;
+
+    float main_angle_step = HAPTIC_AZI_OUT_ANGLE_DEFAULT;
 
     float friction_alpha = 3.0f;
     float friction_force_max = 7.0f;

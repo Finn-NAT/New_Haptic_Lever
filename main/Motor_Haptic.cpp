@@ -15,7 +15,30 @@ MotorHaptic::~MotorHaptic() {
 }
 
 // Initialize all components
-void MotorHaptic::init() {
+void MotorHaptic::init(LeverType lever_type) {
+    if(lever_type == AZIPOD) {
+        haptic_default_pid_p = FOC_AZI_PID_P_DEFAULT;
+        haptic_default_pid_d = FOC_AZI_PID_D_DEFAULT;
+        haptic_default_pid_i = FOC_AZI_PID_I_DEFAULT;
+
+        haptic_velocity_pid_i = FOC_AZI_PID_IV_DEFAULT;
+        haptic_velocity_pid_p = FOC_AZI_PID_PV_DEFAULT;
+
+        haptic_sub_pid_p = SUB_AZI_FOC_PID_P;
+
+        main_angle_step = HAPTIC_AZI_OUT_ANGLE_DEFAULT;
+    }else {
+        haptic_default_pid_p = FOC_PID_P_DEFAULT;
+        haptic_default_pid_d = FOC_PID_D_DEFAULT;
+        haptic_default_pid_i = FOC_PID_I_DEFAULT;
+
+        haptic_velocity_pid_i = FOC_PID_IV_DEFAULT;
+        haptic_velocity_pid_p = FOC_PID_PV_DEFAULT;
+
+        haptic_sub_pid_p = SUB_FOC_PID_P;
+
+        main_angle_step = HAPTIC_OUT_ANGLE_DEFAULT;
+    }
 
     sensor.init();
     motor.linkSensor(&sensor);
@@ -25,15 +48,14 @@ void MotorHaptic::init() {
     motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
     motor.controller = MotionControlType::torque;
     // Velocity PID (vòng trong)
-    motor.PID_velocity.P = FOC_PID_PV_DEFAULT;  
-    motor.PID_velocity.I = FOC_PID_IV_DEFAULT;
-    motor.PID_velocity.D = 0.0f;
+    motor.PID_velocity.P = haptic_velocity_pid_p;
+    motor.PID_velocity.I = haptic_velocity_pid_i;
     motor.PID_velocity.output_ramp = 1000;  // Ramp output để mượt hơn
     
     // Angle PID (vòng ngoài) 
-    motor.P_angle.P = FOC_PID_P_DEFAULT;
-    motor.P_angle.D = FOC_PID_D_DEFAULT;     
-    motor.P_angle.I = FOC_PID_I_DEFAULT;     
+    motor.P_angle.P = haptic_default_pid_p;
+    motor.P_angle.D = haptic_default_pid_d;     
+    motor.P_angle.I = haptic_default_pid_i;     
     // motor.P_angle.output_ramp = 10000;       
     
     motor.voltage_limit = FOC_VOLTAGE_LIMIT;
@@ -50,14 +72,7 @@ void MotorHaptic::init() {
     printf("MotorHaptic initialized successfully: (zero_electric_angle = %.8f)\n", motor.zero_electric_angle);
 }
 
-#ifndef AZIPOD_VERSION
-// Calibration routine
-void MotorHaptic::calibrate() {
-  // motor.loopFOC();
-  // home_angle = motor.shaft_angle;
-  // max_position = home_angle + (60.0f * DEG_TO_RAD);
-  // min_position = home_angle - (60.0f * DEG_TO_RAD);
-
+void MotorHaptic::Lever_Calibration_Routine(){
   setMotorState(HAPTIC_MOTOR_CALIB);
 
   float vec_tb = 0;
@@ -66,15 +81,15 @@ void MotorHaptic::calibrate() {
 
   motor.controller = MotionControlType::torque;
 
-  uint64_t timeout_counter = esp_timer_get_time();
   bool run_right = false;
   bool run_left = false;
   
   while(1){
     float old_angle = motor.shaft_angle;
+    uint64_t timeout_counter = esp_timer_get_time();
 
 	  motor.loopFOC();
-	  while(timeout_counter + 10000000 > esp_timer_get_time()){
+	  while(timeout_counter + 8000000 > esp_timer_get_time()){
 	    for(int i = 0 ; i < 40; i++){
 		  motor.loopFOC();
 		  motor.move(haptic_torque);
@@ -96,7 +111,7 @@ void MotorHaptic::calibrate() {
     count = 0;
     motor.move(0);
 
-	  while(timeout_counter + 20000000 > esp_timer_get_time()){
+	  while(timeout_counter + 16000000 > esp_timer_get_time()){
 	    for(int i = 0 ; i < 40; i++){
 		  motor.loopFOC();
 		  motor.move(-haptic_torque);
@@ -193,6 +208,9 @@ void MotorHaptic::calibrate() {
       printf("Increasing torque to %.2f for next calibration attempt\n", haptic_torque);
     }
 
+    run_right = false;
+    run_left = false;
+
     vec_tb = 0;
     count_vec = 0;
     vTaskDelay(1000 / portTICK_PERIOD_MS); 
@@ -222,42 +240,24 @@ void MotorHaptic::calibrate() {
 	    delay(1);
 	}
   setMotorState(HAPTIC_MOTOR_READY);
-  return;  
-
+  return;    
 }
-#else
-void MotorHaptic::calibrate() {
+
+void MotorHaptic::Azipod_Calibration_Routine() {
     motor.loopFOC();
-    home_angle = 45.0f * DEG_TO_RAD;
-    int count = 0;
-
-    motor.P_angle.P = haptic_calib_p;
-    motor.P_angle.D = haptic_calib_d;
-    motor.P_angle.I = haptic_calib_i;
-
-    motor.P_angle.reset();
-    motor.PID_velocity.reset();
-
-	  while(1){
-	    motor.loopFOC();
-	    float error =  motor.shaft_angle - home_angle;
-	    float shaft_velocity_sp = motor.P_angle(home_angle - motor.shaft_angle );
-        shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
-        float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
-        current_sp = _constrain(current_sp,-haptic_torque,haptic_torque);
-        motor.move(current_sp);
-	    if(fabs(error*RAD_TO_DEG) < 0.25){count++;}
-	    if(count > 50) {
-            motor.P_angle.reset();
-            motor.PID_velocity.reset();
-            break;
-        }
-	    delay(1);
-	  }
+    home_angle = motor.shaft_angle;
     setMotorState(HAPTIC_MOTOR_READY);
     return;  
 }
-#endif
+
+// Calibration routine
+void MotorHaptic::calibrate(LeverType lever_type) {
+    if(lever_type == AZIPOD) {
+        Azipod_Calibration_Routine();
+    } else {
+        Lever_Calibration_Routine();
+    }
+}
 
 void MotorHaptic::setup(){
     (this->*setup_function_ptr)();
@@ -278,12 +278,10 @@ void MotorHaptic::setLoopMode(LoopMode mode) {
     current_function_mode = mode;
     
     switch(mode) {
-#ifdef AZIPOD_VERSION
         case FUNCTION_AZI_MODE_1:
             loop_function_ptr = &MotorHaptic::loopAF1;
             setup_function_ptr = &MotorHaptic::setupAF1;
             break;
-#endif
         case FUNCTION_MODE_1:
             loop_function_ptr = &MotorHaptic::loopF1;
             setup_function_ptr = &MotorHaptic::setupF1;
