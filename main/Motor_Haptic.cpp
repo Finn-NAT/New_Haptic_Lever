@@ -43,6 +43,7 @@ void MotorHaptic::init(LeverType lever_type) {
     sensor.init();
     motor.linkSensor(&sensor);
     driver.voltage_power_supply = DRIVER_VOLTAGE_POWER_SUPPLY;
+    driver.pwm_frequency = 50000;
     driver.init(); 
     motor.linkDriver(&driver);
     motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
@@ -50,7 +51,7 @@ void MotorHaptic::init(LeverType lever_type) {
     // Velocity PID (vòng trong)
     motor.PID_velocity.P = haptic_velocity_pid_p;
     motor.PID_velocity.I = haptic_velocity_pid_i;
-    motor.PID_velocity.output_ramp = 1000;  // Ramp output để mượt hơn
+    // motor.PID_velocity.output_ramp = 1000;  // Ramp output để mượt hơn
     
     // Angle PID (vòng ngoài) 
     motor.P_angle.P = haptic_default_pid_p;

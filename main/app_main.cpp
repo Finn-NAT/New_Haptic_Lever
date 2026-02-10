@@ -321,6 +321,7 @@ extern "C" void app_main() {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     adc_value /= 30;
+    // adc_value = 1500; // For testing purpose, force to AZIPOD
     printf("Average ADC Value: %d mV\n", adc_value);
     if(adc_value < 1100){
         current_lever_type = LEFT_LEVER;
@@ -334,6 +335,7 @@ extern "C" void app_main() {
         current_lever_type = AZIPOD;
         update_id = UPDATED_AZIPOD_ID;
         command_id = COMMAND_AZIPOD_ID;
+        current_mode = FUNCTION_AZI_MODE_1;
     }
     printf("Detected lever type: %d\n", current_lever_type);
 

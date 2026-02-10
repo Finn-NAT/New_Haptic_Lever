@@ -25,11 +25,11 @@
 
 #define FOC_VOLTAGE_LIMIT 20
 
-#define FOC_AZI_PID_P_DEFAULT 415         
+#define FOC_AZI_PID_P_DEFAULT 675         
 #define FOC_AZI_PID_D_DEFAULT 0.01        
-#define FOC_AZI_PID_I_DEFAULT 0.7       
-#define FOC_AZI_PID_PV_DEFAULT 0.54        
-#define FOC_AZI_PID_IV_DEFAULT 0.03
+#define FOC_AZI_PID_I_DEFAULT 0.0001       
+#define FOC_AZI_PID_PV_DEFAULT 0.39        
+#define FOC_AZI_PID_IV_DEFAULT 0.001
 //-------------------------------------
 //PID Values for Lever-----------------
 #define FOC_PID_P_DEFAULT 950
@@ -52,7 +52,7 @@
 #define CALIB_TORQUE_VALUE 5.6f
 
 //Angle Value for Azipod Haptic Functions--------------
-#define HAPTIC_AZI_OUT_ANGLE_DEFAULT    (2.5f * PI / 180.0)
+#define HAPTIC_AZI_OUT_ANGLE_DEFAULT    (3.0f * PI / 180.0)
 //Angle Value for Lever Haptic Functions---------------
 #define HAPTIC_OUT_ANGLE_DEFAULT        (1.8f * PI / 180.0)
 //-----------------------------------------------------
@@ -202,7 +202,7 @@ private:
 
     float haptic_sub_pid_p = SUB_FOC_PID_P;
 
-    float main_angle_step = HAPTIC_AZI_OUT_ANGLE_DEFAULT;
+    float main_angle_step = HAPTIC_OUT_ANGLE_DEFAULT;
 
     float friction_alpha = 3.0f;
     float friction_force_max = 7.0f;

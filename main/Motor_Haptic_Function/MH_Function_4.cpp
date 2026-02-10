@@ -44,9 +44,9 @@ void MotorHaptic::setupF4() {
     max_position_haptic = list_haptics[6] + PI/18;
     min_position_haptic = list_haptics[7] - PI/18;
 
-    motor.P_angle.P = haptic_calib_p;
-    motor.P_angle.D = haptic_calib_d;  
-    motor.P_angle.I = haptic_calib_i;  
+    motor.P_angle.P = haptic_default_pid_p;
+    motor.P_angle.D = haptic_default_pid_d;  
+    motor.P_angle.I = haptic_default_pid_i;  
     // motor.P_angle.reset();
     // motor.PID_velocity.reset(); 
     motor.controller = MotionControlType::angle;
@@ -78,7 +78,7 @@ void MotorHaptic::loopF4() {
                 motor.move(-MAIN_FORCE);
                 motor.loopFOC();
             }
-            motor.P_angle.P = haptic_calib_p;
+            motor.P_angle.P = haptic_default_pid_p;
             motor.P_angle.reset();
             motor.PID_velocity.reset();
             one_time = false;
