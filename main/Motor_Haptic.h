@@ -25,11 +25,16 @@
 
 #define FOC_VOLTAGE_LIMIT 20
 
-#define FOC_AZI_PID_P_DEFAULT 675         
+#define FOC_AZI_PID_P_DEFAULT 875         
 #define FOC_AZI_PID_D_DEFAULT 0.01        
-#define FOC_AZI_PID_I_DEFAULT 0.0001       
-#define FOC_AZI_PID_PV_DEFAULT 0.39        
+#define FOC_AZI_PID_I_DEFAULT 1       
+#define FOC_AZI_PID_PV_DEFAULT 0.32        
 #define FOC_AZI_PID_IV_DEFAULT 0.001
+// #define FOC_AZI_PID_P_DEFAULT 1         
+// #define FOC_AZI_PID_D_DEFAULT 0.01        
+// #define FOC_AZI_PID_I_DEFAULT 0.001       
+// #define FOC_AZI_PID_PV_DEFAULT 3.39        
+// #define FOC_AZI_PID_IV_DEFAULT 0.01
 //-------------------------------------
 //PID Values for Lever-----------------
 #define FOC_PID_P_DEFAULT 950

@@ -49,7 +49,7 @@ void MotorHaptic::setupF4() {
     motor.P_angle.I = haptic_default_pid_i;  
     // motor.P_angle.reset();
     // motor.PID_velocity.reset(); 
-    motor.controller = MotionControlType::angle;
+    motor.controller = MotionControlType::torque;
     // motor.loopFOC();
     // home_angle = motor.shaft_angle;
 }

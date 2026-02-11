@@ -18,6 +18,6 @@ void setup() {
 
 void loop() {
   sensor.update();
-  Serial.println(sensor.getAngle(),5);
+  Serial.println(sensor.getAngle() * RAD_TO_DEG,5);
   delay(50);
 }

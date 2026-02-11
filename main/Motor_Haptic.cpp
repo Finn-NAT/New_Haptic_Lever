@@ -61,6 +61,7 @@ void MotorHaptic::init(LeverType lever_type) {
     
     motor.voltage_limit = FOC_VOLTAGE_LIMIT;
     motor.LPF_velocity.Tf = FOC_LOW_PASS_FILTER_VELOCITY;
+    motor.LPF_angle.Tf = 0.009f;
     motor.velocity_limit = FOC_PID_VELOCITY_LIMIT;
     motor.init();
     motor.sensor_direction = FOC_SENSOR_DIRCTION;
