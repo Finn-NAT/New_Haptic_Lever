@@ -44,19 +44,19 @@ void MotorHaptic::loopF0() {
             if(angle_dead_zone < main_angle_step) {
                 angle_dead_zone = main_angle_step;
             }
-            if(error > 0) {
-                motor.move(MAIN_FORCE);
-                motor.loopFOC();
-                delayMicroseconds(1);
-                motor.move(MAIN_FORCE);
-                motor.loopFOC();
-            } else {
-                motor.move(-MAIN_FORCE);
-                motor.loopFOC();
-                delayMicroseconds(1);
-                motor.move(-MAIN_FORCE);
-                motor.loopFOC();
-            }
+            // if(error > 0) {
+            //     motor.move(MAIN_FORCE);
+            //     motor.loopFOC();
+            //     delayMicroseconds(1);
+            //     motor.move(MAIN_FORCE);
+            //     motor.loopFOC();
+            // } else {
+            //     motor.move(-MAIN_FORCE);
+            //     motor.loopFOC();
+            //     delayMicroseconds(1);
+            //     motor.move(-MAIN_FORCE);
+            //     motor.loopFOC();
+            // }
             motor.P_angle.P = haptic_default_pid_p;
             motor.P_angle.reset();
             motor.PID_velocity.reset();

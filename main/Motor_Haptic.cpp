@@ -61,7 +61,7 @@ void MotorHaptic::init(LeverType lever_type) {
     
     motor.voltage_limit = FOC_VOLTAGE_LIMIT;
     motor.LPF_velocity.Tf = FOC_LOW_PASS_FILTER_VELOCITY;
-    motor.LPF_angle.Tf = 0.009f;
+    // motor.LPF_angle.Tf = 0.009f;
     motor.velocity_limit = FOC_PID_VELOCITY_LIMIT;
     motor.init();
     motor.sensor_direction = FOC_SENSOR_DIRCTION;
@@ -246,8 +246,61 @@ void MotorHaptic::Lever_Calibration_Routine(){
 }
 
 void MotorHaptic::Azipod_Calibration_Routine() {
+    motor.controller = MotionControlType::torque;
+    int count = 0;
+  motor.P_angle.P = 40;
+  motor.P_angle.D = 0.1;
+  motor.P_angle.I = 30;
+
+  motor.P_angle.reset();
+  motor.PID_velocity.reset();
+
+    setMotorState(HAPTIC_MOTOR_CALIB);
+
     motor.loopFOC();
-    home_angle = motor.shaft_angle;
+    float initial_angle = motor.shaftAngle();
+    if(initial_angle < 0) {
+        int jump_loop = initial_angle/(360.0f*DEG_TO_RAD);
+        home_angle = (jump_loop-1)*360.0f*DEG_TO_RAD + 55.0f*DEG_TO_RAD;
+	      while(1){
+	          motor.loopFOC();
+	          float error =  motor.shaft_angle - home_angle;
+	          float current_sp = motor.P_angle(home_angle - motor.shaft_angle );
+            // shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
+            // float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
+            current_sp = _constrain(current_sp,-3.5,3.5);
+            motor.move(current_sp);
+	          if(fabs(error*RAD_TO_DEG) < 0.25){count++;}
+	          if(count > 50) {
+                  motor.P_angle.reset();
+                  motor.PID_velocity.reset();
+                  break;
+              }
+	          delay(1);
+	      }
+    }else{
+        int jump_loop = initial_angle/(360.0f*DEG_TO_RAD);
+        home_angle = jump_loop*360.0f*DEG_TO_RAD + 55.0f*DEG_TO_RAD;
+	      while(1){
+	          motor.loopFOC();
+	          float error =  motor.shaft_angle - home_angle;
+	          float current_sp = motor.P_angle(home_angle - motor.shaft_angle );
+            // shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
+            // float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
+            current_sp = _constrain(current_sp,-3.5,3.5);
+            motor.move(current_sp);
+	          if(fabs(error*RAD_TO_DEG) < 0.25){count++;}
+	          if(count > 50) {
+                  motor.P_angle.reset();
+                  motor.PID_velocity.reset();
+                  break;
+              }
+	          delay(1);
+	      }      
+    }
+    
+    home_angle = motor.shaftAngle();
+
     setMotorState(HAPTIC_MOTOR_READY);
     return;  
 }

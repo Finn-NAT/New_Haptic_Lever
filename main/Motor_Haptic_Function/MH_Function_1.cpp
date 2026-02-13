@@ -51,19 +51,19 @@ void MotorHaptic::loopF1() {
             if(angle_dead_zone < main_angle_step) {
                 angle_dead_zone = main_angle_step;
             }
-            if(error > 0) {
-                motor.move(MAIN_FORCE);
-                motor.loopFOC();
-                delayMicroseconds(1);
-                motor.move(MAIN_FORCE);
-                motor.loopFOC();
-            } else {
-                motor.move(-MAIN_FORCE);
-                motor.loopFOC();
-                delayMicroseconds(1);
-                motor.move(-MAIN_FORCE);
-                motor.loopFOC();
-            }
+            // if(error > 0) {
+            //     motor.move(MAIN_FORCE);
+            //     motor.loopFOC();
+            //     delayMicroseconds(1);
+            //     motor.move(MAIN_FORCE);
+            //     motor.loopFOC();
+            // } else {
+            //     motor.move(-MAIN_FORCE);
+            //     motor.loopFOC();
+            //     delayMicroseconds(1);
+            //     motor.move(-MAIN_FORCE);
+            //     motor.loopFOC();
+            // }
             motor.P_angle.P = haptic_default_pid_p;
             motor.P_angle.reset();
             motor.PID_velocity.reset();
@@ -72,10 +72,13 @@ void MotorHaptic::loopF1() {
         if(fabs(error) < main_angle_step/4 && fabs(motor.shaft_velocity) < 0.1f) {
             angle_dead_zone = main_angle_step;
         }
-	    float shaft_velocity_sp = motor.P_angle(home_angle - motor.shaft_angle );
+        float current_angle = motor.shaftAngle();      // Gọi hàm, không dùng biến member
+        float current_velocity = motor.shaftVelocity(); // Gọi hàm, không dùng biến member
+
+	    float shaft_velocity_sp = motor.P_angle(home_angle - current_angle );
         shaft_velocity_sp = _constrain(shaft_velocity_sp,-motor.velocity_limit, motor.velocity_limit);
-        float current_sp = motor.PID_velocity(shaft_velocity_sp - motor.shaft_velocity); 
-        current_sp = _constrain(current_sp,-11.4,11.4);
+        float current_sp = motor.PID_velocity(shaft_velocity_sp - current_velocity); 
+        current_sp = _constrain(current_sp,-11.4f,11.4f);
         motor.move(current_sp);
     }
     else {

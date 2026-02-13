@@ -25,10 +25,10 @@
 
 #define FOC_VOLTAGE_LIMIT 20
 
-#define FOC_AZI_PID_P_DEFAULT 875         
+#define FOC_AZI_PID_P_DEFAULT 825         
 #define FOC_AZI_PID_D_DEFAULT 0.01        
 #define FOC_AZI_PID_I_DEFAULT 1       
-#define FOC_AZI_PID_PV_DEFAULT 0.32        
+#define FOC_AZI_PID_PV_DEFAULT 0.45        
 #define FOC_AZI_PID_IV_DEFAULT 0.001
 // #define FOC_AZI_PID_P_DEFAULT 1         
 // #define FOC_AZI_PID_D_DEFAULT 0.01        
@@ -57,7 +57,7 @@
 #define CALIB_TORQUE_VALUE 5.6f
 
 //Angle Value for Azipod Haptic Functions--------------
-#define HAPTIC_AZI_OUT_ANGLE_DEFAULT    (3.0f * PI / 180.0)
+#define HAPTIC_AZI_OUT_ANGLE_DEFAULT    (2.4f * PI / 180.0)
 //Angle Value for Lever Haptic Functions---------------
 #define HAPTIC_OUT_ANGLE_DEFAULT        (1.8f * PI / 180.0)
 //-----------------------------------------------------
